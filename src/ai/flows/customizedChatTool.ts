@@ -1,8 +1,9 @@
-import {defineFlow} from 'genkit';
+'use server';
+
 import {z} from 'zod';
 import {ai} from '../genkit';
 
-export const customizedChatTool = defineFlow(
+export const customizedChatTool = ai.defineFlow(
   {
     name: 'customizedChatTool',
     inputSchema: z.object({
@@ -26,6 +27,6 @@ export const customizedChatTool = defineFlow(
       format: 'json',
     });
 
-    return llmResponse.output() as {command: string; response: string};
+    return llmResponse.output as {command: string; response: string};
   }
 );
