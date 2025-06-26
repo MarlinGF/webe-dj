@@ -1,6 +1,7 @@
 'use client';
 
-import { useFormState, useFormStatus } from 'react-dom';
+import { useFormStatus } from 'react-dom';
+import { useActionState } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
@@ -20,7 +21,7 @@ function SubmitButton() {
 
 export function ChatCommandGenerator() {
   const initialState = { message: null, data: null, errors: null };
-  const [state, dispatch] = useFormState(generateChatCommand, initialState);
+  const [state, dispatch] = useActionState(generateChatCommand, initialState);
 
   return (
     <Card className="h-full">
