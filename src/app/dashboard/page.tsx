@@ -4,6 +4,7 @@ import { StreamConfig } from '@/components/dashboard/stream-config';
 import { ShareStream } from '@/components/dashboard/share-stream';
 import { AudioPreview } from '@/components/dashboard/audio-preview';
 import { ChatCommandGenerator } from '@/components/dashboard/chat-command-generator';
+import { VideoPreview } from '@/components/dashboard/video-preview';
 
 export default function DashboardPage() {
   const { user } = useAuth();
@@ -19,18 +20,15 @@ export default function DashboardPage() {
             </p>
         </div>
 
-        <div className="grid grid-cols-1 gap-6 lg:grid-cols-2 xl:grid-cols-3">
-            <div className="lg:col-span-2 xl:col-span-2">
-                <StreamConfig />
-            </div>
-            <div className="lg:col-span-1 xl:col-span-1">
-                <ShareStream />
-            </div>
-            <div className="lg:col-span-1 xl:col-span-1">
-                <AudioPreview />
-            </div>
-            <div className="lg:col-span-2 xl:col-span-2">
+        <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
+            <div className="lg:col-span-2 space-y-6">
+                <VideoPreview />
                 <ChatCommandGenerator />
+            </div>
+            <div className="lg:col-span-1 space-y-6">
+                <AudioPreview />
+                <StreamConfig />
+                <ShareStream />
             </div>
         </div>
     </div>
