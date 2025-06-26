@@ -69,7 +69,7 @@ export default function SignUpPage() {
     <Card>
       <CardHeader>
         <CardTitle className="font-headline text-2xl">Create an Account</CardTitle>
-        <CardDescription>Join our community of artists. It's free!</CardDescription>
+        <CardDescription>Join our community of streamers. It's free!</CardDescription>
       </CardHeader>
       <Form {...form}>
         <form onSubmit={form.handleSubmit(onSubmit)}>
@@ -81,7 +81,7 @@ export default function SignUpPage() {
                 <FormItem>
                   <FormLabel>Email</FormLabel>
                   <FormControl>
-                    <Input placeholder="you@artist.com" {...field} />
+                    <Input placeholder="you@example.com" {...field} />
                   </FormControl>
                   <FormMessage />
                 </FormItem>

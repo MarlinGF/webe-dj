@@ -12,7 +12,7 @@ export default function DashboardPage() {
     <div className="container mx-auto">
         <div className="mb-8">
             <h2 className="font-headline text-4xl font-bold tracking-tight text-primary">
-                Welcome, {user?.email?.split('@')[0] || 'Artist'}!
+                Welcome, {user?.email?.split('@')[0] || 'Streamer'}!
             </h2>
             <p className="text-muted-foreground">
                 Here's your control center. Manage your stream and engage with your audience.

@@ -4,8 +4,8 @@ import { Toaster } from '@/components/ui/toaster';
 import './globals.css';
 
 export const metadata: Metadata = {
-  title: 'ArtistLive',
-  description: 'Stream for artists, by artists.',
+  title: 'We-Be Live',
+  description: 'Your stage for live streaming.',
 };
 
 export default function RootLayout({

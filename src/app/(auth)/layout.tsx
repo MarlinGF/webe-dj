@@ -1,4 +1,4 @@
-import { Palette } from 'lucide-react';
+import { Clapperboard } from 'lucide-react';
 import Link from 'next/link';
 
 export default function AuthLayout({
@@ -11,8 +11,8 @@ export default function AuthLayout({
       <div className="w-full max-w-md">
         <div className="mb-8 flex flex-col items-center text-center">
             <Link href="/" className="flex items-center gap-2 text-2xl font-bold text-primary">
-                <Palette className="h-8 w-8" />
-                <h1 className="font-headline text-4xl">ArtistLive</h1>
+                <Clapperboard className="h-8 w-8" />
+                <h1 className="font-headline text-4xl">We-Be Live</h1>
             </Link>
         </div>
         {children}
