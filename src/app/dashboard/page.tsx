@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useRef, useEffect, type FC } from 'react';
-import { Card, CardContent, CardTitle, CardDescription } from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Slider } from '@/components/ui/slider';
 import { Separator } from '@/components/ui/separator';
