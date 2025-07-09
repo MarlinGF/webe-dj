@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useRef, useEffect, type FC } from 'react';
+import { useState, useRef, useEffect, type FC, type ChangeEvent } from 'react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Slider } from '@/components/ui/slider';
@@ -20,9 +20,17 @@ import {
   Rewind,
   FastForward,
   Square,
+  Upload,
+  Loader2,
 } from 'lucide-react';
-import { tracks as dummyTracks } from '@/lib/dummy-tracks';
-import type { Track } from '@/lib/dummy-tracks';
+
+export interface Track {
+  id: string;
+  title: string;
+  artist: string;
+  duration: number; // in seconds
+  url: string; 
+}
 
 interface DeckState {
   track: Track | null;
@@ -162,12 +170,15 @@ const TrackTable: FC<{
 export default function DashboardPage() {
   const [deckA, setDeckA] = useState<DeckState>(initialDeckState);
   const [deckB, setDeckB] = useState<DeckState>(initialDeckState);
+  const [libraryTracks, setLibraryTracks] = useState<Track[]>([]);
   const [playlist, setPlaylist] = useState<Track[]>([]);
   const [crossfader, setCrossfader] = useState(0); // -100 for A, 100 for B
+  const [isProcessing, setIsProcessing] = useState(false);
 
   const audioRefA = useRef<HTMLAudioElement>(null);
   const audioRefB = useRef<HTMLAudioElement>(null);
   const previewAudioRef = useRef<HTMLAudioElement>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
   
   // Update audio volumes when faders or crossfader move
   useEffect(() => {
@@ -206,6 +217,48 @@ export default function DashboardPage() {
         clearInterval(intervalB);
     };
   }, [deckA.isPlaying, deckB.isPlaying]);
+
+  const handleFileSelect = async (event: ChangeEvent<HTMLInputElement>) => {
+    const files = event.target.files;
+    if (!files || files.length === 0) return;
+
+    setIsProcessing(true);
+    const newTracks: Track[] = [];
+
+    for (const file of Array.from(files)) {
+      try {
+        const url = URL.createObjectURL(file);
+
+        const duration = await new Promise<number>((resolve, reject) => {
+          const audio = document.createElement('audio');
+          audio.addEventListener('loadedmetadata', () => {
+            resolve(audio.duration);
+          });
+          audio.addEventListener('error', (e) => reject(`Error loading audio duration for ${file.name}`));
+          audio.src = url;
+        });
+
+        const newTrack: Track = {
+          id: `${Date.now()}-${file.name}`,
+          title: file.name.replace(/\.[^/.]+$/, ""),
+          artist: 'Unknown Artist',
+          duration: duration,
+          url: url,
+        };
+
+        newTracks.push(newTrack);
+      } catch (error) {
+        console.error('Error processing file:', file.name, error);
+      }
+    }
+
+    setLibraryTracks(prev => [...prev, ...newTracks].sort((a,b) => a.title.localeCompare(b.title)));
+    setIsProcessing(false);
+
+    if (fileInputRef.current) {
+      fileInputRef.current.value = '';
+    }
+  };
 
   const loadTrack = (deck: 'A' | 'B', track: Track) => {
     const setDeck = deck === 'A' ? setDeckA : setDeckB;
@@ -328,19 +381,37 @@ export default function DashboardPage() {
         {/* Bottom Section: Library and Playlist */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4 flex-1 min-h-0">
             <Card className="flex flex-col">
-                <CardHeader className="p-4">
+                <CardHeader className="p-4 flex-row items-center justify-between">
                     <CardTitle className="font-headline flex items-center gap-2 text-xl"><Music className="h-5 w-5"/> Track Library</CardTitle>
+                    <input
+                        type="file"
+                        ref={fileInputRef}
+                        onChange={handleFileSelect}
+                        accept="audio/*"
+                        multiple
+                        style={{ display: 'none' }}
+                    />
+                    <Button size="sm" onClick={() => fileInputRef.current?.click()} disabled={isProcessing}>
+                        {isProcessing ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Upload className="mr-2 h-4 w-4" />}
+                        Add Tracks
+                    </Button>
                 </CardHeader>
                 <CardContent className="flex-1 overflow-hidden p-0">
                    <ScrollArea className="h-full">
                      <div className="p-2 pt-0">
-                        <TrackTable 
-                            tracks={dummyTracks}
-                            onLoadA={loadTrack}
-                            onLoadB={loadTrack}
-                            onPreview={previewTrack}
-                            onAddToPlaylist={handleAddToPlaylist}
-                        />
+                        {libraryTracks.length > 0 ? (
+                            <TrackTable 
+                                tracks={libraryTracks}
+                                onLoadA={loadTrack}
+                                onLoadB={loadTrack}
+                                onPreview={previewTrack}
+                                onAddToPlaylist={handleAddToPlaylist}
+                            />
+                        ) : (
+                           <div className="flex items-center justify-center h-full text-muted-foreground text-sm p-4 text-center">
+                               <p>Your library is empty. Click "Add Tracks" to get started.</p>
+                           </div>
+                        )}
                      </div>
                    </ScrollArea>
                 </CardContent>
