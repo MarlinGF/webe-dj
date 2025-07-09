@@ -1,14 +1,12 @@
 'use client';
 
 import { useState, useRef, useEffect, type FC } from 'react';
-import Image from 'next/image';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
+import { Card, CardContent, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Slider } from '@/components/ui/slider';
 import { Separator } from '@/components/ui/separator';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
-import { Label } from '@/components/ui/label';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import {
   Play,
@@ -19,6 +17,9 @@ import {
   Music,
   PlusCircle,
   ListMusic,
+  Rewind,
+  FastForward,
+  Square,
 } from 'lucide-react';
 import { tracks as dummyTracks } from '@/lib/dummy-tracks';
 import type { Track } from '@/lib/dummy-tracks';
@@ -51,58 +52,68 @@ const PlayerDeck: FC<{
     deck: 'A' | 'B';
     state: DeckState;
     onPlay: () => void;
+    onStop: () => void;
+    onSeek: (amount: number) => void;
     onVolumeChange: (value: number[]) => void;
-}> = ({ deck, state, onPlay, onVolumeChange }) => (
+    onProgressChange: (value: number[]) => void;
+}> = ({ deck, state, onPlay, onStop, onSeek, onVolumeChange, onProgressChange }) => (
     <Card className="flex-1 bg-card/50 border-0 shadow-none">
-      <CardHeader className="pb-2">
-        <CardTitle className="font-headline flex justify-between items-center text-xl">
-            Deck {deck}
-            {state.isLive && <Badge variant="destructive" className="animate-pulse">LIVE</Badge>}
-        </CardTitle>
-         <CardDescription className="truncate h-5 text-xs">
-            {state.track ? `${state.track.title} - ${state.track.artist}` : 'Load a track'}
-        </CardDescription>
-      </CardHeader>
-      <CardContent className="grid grid-cols-[150px_1fr] gap-4 items-center">
-        <div className="relative aspect-square">
-            <Image 
-                src="https://placehold.co/150x150.png" 
-                alt="Album Art" 
-                width={150} 
-                height={150} 
-                className="rounded-full object-cover"
-                data-ai-hint="vinyl record"
-            />
-        </div>
-        <div className="space-y-4">
-            <div className="w-full text-center">
-                <p className="text-2xl font-bold font-code">{formatDuration(state.currentTime)}</p>
-                <Slider
-                    value={[state.progress]}
-                    max={100}
-                    step={1}
-                    disabled={!state.track}
-                    className="my-2"
-                />
+        <CardContent className="p-3 space-y-2">
+            <div className="flex justify-between items-center">
+                <CardTitle className="font-headline text-lg">
+                    Deck {deck}
+                </CardTitle>
+                {state.isLive && <Badge variant="destructive" className="animate-pulse">LIVE</Badge>}
             </div>
-            <div className="flex items-center justify-center gap-4">
-                <Button size="lg" variant="ghost" onClick={onPlay} disabled={!state.track} className="h-16 w-16 rounded-full">
-                    {state.isPlaying ? <Pause className="h-8 w-8" /> : <Play className="h-8 w-8" />}
-                </Button>
+
+            <div className="space-y-1 h-12">
+                <p className="font-bold text-sm truncate" title={state.track?.title ?? ''}>{state.track?.title ?? 'No Track Loaded'}</p>
+                <p className="text-xs text-muted-foreground truncate">{state.track?.artist ?? '---'}</p>
             </div>
-            <div className="flex items-center gap-2">
-                <Volume1 className="h-5 w-5 text-muted-foreground" />
-                <Slider
-                  defaultValue={[state.volume]}
-                  max={100}
-                  step={1}
-                  onValueChange={onVolumeChange}
-                  disabled={!state.track}
-                />
-                <Volume2 className="h-5 w-5 text-muted-foreground" />
+            
+            <div className="space-y-2">
+                <div className="flex items-center gap-2">
+                    <p className="text-xs font-code">{formatDuration(state.currentTime)}</p>
+                    <Slider
+                        value={[state.progress]}
+                        max={100}
+                        step={0.1}
+                        disabled={!state.track}
+                        onValueChange={onProgressChange}
+                    />
+                    <p className="text-xs font-code">{formatDuration(state.track?.duration ?? 0)}</p>
+                </div>
+
+                <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-1">
+                         <Button size="icon" variant="ghost" onClick={() => onSeek(-5)} disabled={!state.track} className="h-8 w-8">
+                            <Rewind className="h-5 w-5" />
+                        </Button>
+                        <Button size="icon" variant="ghost" onClick={onPlay} disabled={!state.track} className="h-8 w-8">
+                            {state.isPlaying ? <Pause className="h-5 w-5" /> : <Play className="h-5 w-5" />}
+                        </Button>
+                         <Button size="icon" variant="ghost" onClick={onStop} disabled={!state.track} className="h-8 w-8">
+                            <Square className="h-5 w-5" />
+                        </Button>
+                        <Button size="icon" variant="ghost" onClick={() => onSeek(5)} disabled={!state.track} className="h-8 w-8">
+                            <FastForward className="h-5 w-5" />
+                        </Button>
+                    </div>
+
+                    <div className="flex items-center gap-2 w-1/3">
+                        <Volume1 className="h-5 w-5 text-muted-foreground" />
+                        <Slider
+                          value={[state.volume]}
+                          max={100}
+                          step={1}
+                          onValueChange={onVolumeChange}
+                          disabled={!state.track}
+                        />
+                        <Volume2 className="h-5 w-5 text-muted-foreground" />
+                    </div>
+                </div>
             </div>
-        </div>
-      </CardContent>
+        </CardContent>
     </Card>
 );
 
@@ -117,29 +128,29 @@ const TrackTable: FC<{
     <Table>
         <TableHeader>
             <TableRow>
-                <TableHead>Title</TableHead>
-                <TableHead className="hidden sm:table-cell">Artist</TableHead>
-                <TableHead className="hidden md:table-cell text-right">Time</TableHead>
-                <TableHead className="text-right">Actions</TableHead>
+                <TableHead className="py-1 px-4 text-xs h-auto">Title</TableHead>
+                <TableHead className="hidden sm:table-cell py-1 px-4 text-xs h-auto">Artist</TableHead>
+                <TableHead className="hidden md:table-cell text-right py-1 px-4 text-xs h-auto">Time</TableHead>
+                <TableHead className="text-right py-1 px-4 text-xs h-auto">Actions</TableHead>
             </TableRow>
         </TableHeader>
         <TableBody>
             {tracks.map((track) => (
-                <TableRow key={track.id}>
-                    <TableCell className="font-medium">{track.title}</TableCell>
-                    <TableCell className="hidden sm:table-cell">{track.artist}</TableCell>
-                    <TableCell className="hidden md:table-cell text-right font-code">{formatDuration(track.duration)}</TableCell>
-                    <TableCell className="text-right space-x-1">
-                        <Button variant="ghost" size="icon" onClick={() => onPreview(track)} title="Preview Track">
-                            <Headphones className="h-4 w-4" />
+                <TableRow key={track.id} className="h-auto">
+                    <TableCell className="font-medium py-1 px-4 text-xs">{track.title}</TableCell>
+                    <TableCell className="hidden sm:table-cell py-1 px-4 text-xs">{track.artist}</TableCell>
+                    <TableCell className="hidden md:table-cell text-right font-code py-1 px-4 text-xs">{formatDuration(track.duration)}</TableCell>
+                    <TableCell className="text-right space-x-1 py-0 px-4">
+                        <Button variant="ghost" size="icon" onClick={() => onPreview(track)} title="Preview Track" className="h-6 w-6">
+                            <Headphones className="h-3 w-3" />
                         </Button>
                         {!isPlaylist && onAddToPlaylist && (
-                            <Button variant="ghost" size="icon" onClick={() => onAddToPlaylist(track)} title="Add to Playlist">
-                                <PlusCircle className="h-4 w-4" />
+                            <Button variant="ghost" size="icon" onClick={() => onAddToPlaylist(track)} title="Add to Playlist" className="h-6 w-6">
+                                <PlusCircle className="h-3 w-3" />
                             </Button>
                         )}
-                        <Button size="sm" variant="outline" onClick={() => onLoadA(track)}>A</Button>
-                        <Button size="sm" variant="outline" onClick={() => onLoadB(track)}>B</Button>
+                        <Button size="sm" variant="outline" onClick={() => onLoadA(track)} className="h-6 px-2 text-xs">A</Button>
+                        <Button size="sm" variant="outline" onClick={() => onLoadB(track)} className="h-6 px-2 text-xs">B</Button>
                     </TableCell>
                 </TableRow>
             ))}
@@ -182,19 +193,19 @@ export default function DashboardPage() {
     const audioB = audioRefB.current;
 
     const updateProgress = (audio: HTMLAudioElement, setDeck: React.Dispatch<React.SetStateAction<DeckState>>) => {
-        if (!audio) return;
+        if (!audio || !audio.duration) return;
         const progress = (audio.currentTime / audio.duration) * 100;
         setDeck(d => ({ ...d, progress: isNaN(progress) ? 0 : progress, currentTime: audio.currentTime }));
     };
     
-    const intervalA = setInterval(() => updateProgress(audioA!, setDeckA), 500);
-    const intervalB = setInterval(() => updateProgress(audioB!, setDeckB), 500);
+    const intervalA = setInterval(() => { if (deckA.isPlaying) updateProgress(audioA!, setDeckA) }, 250);
+    const intervalB = setInterval(() => { if (deckB.isPlaying) updateProgress(audioB!, setDeckB) }, 250);
     
     return () => {
         clearInterval(intervalA);
         clearInterval(intervalB);
     };
-  }, []);
+  }, [deckA.isPlaying, deckB.isPlaying]);
 
   const loadTrack = (deck: 'A' | 'B', track: Track) => {
     const setDeck = deck === 'A' ? setDeckA : setDeckB;
@@ -205,6 +216,7 @@ export default function DashboardPage() {
         const newState = { ...initialDeckState, track: track, volume: prev.volume };
         if (audioRef.current) {
             audioRef.current.src = track.url;
+            audioRef.current.load();
         }
         return newState;
     });
@@ -223,6 +235,32 @@ export default function DashboardPage() {
       audioRef.current.play().catch(e => console.error("Error playing audio:", e));
     }
     setState(prev => ({ ...prev, isPlaying: !prev.isPlaying }));
+  };
+
+  const handleStop = (deck: 'A' | 'B') => {
+    const audioRef = deck === 'A' ? audioRefA : audioRefB;
+    const setState = deck === 'A' ? setDeckA : setDeckB;
+    if (audioRef.current) {
+        audioRef.current.pause();
+        audioRef.current.currentTime = 0;
+    }
+    setState(prev => ({ ...prev, isPlaying: false }));
+  };
+
+  const handleSeek = (deck: 'A' | 'B', amount: number) => {
+      const audioRef = deck === 'A' ? audioRefA : audioRefB;
+      if (audioRef.current && audioRef.current.duration) {
+          const newTime = audioRef.current.currentTime + amount;
+          audioRef.current.currentTime = Math.max(0, Math.min(audioRef.current.duration, newTime));
+      }
+  };
+  
+  const handleProgressChange = (deck: 'A' | 'B', value: number[]) => {
+    const audioRef = deck === 'A' ? audioRefA : audioRefB;
+    if (audioRef.current && audioRef.current.duration) {
+        const newTime = (audioRef.current.duration * value[0]) / 100;
+        audioRef.current.currentTime = newTime;
+    }
   };
 
   const handleVolumeChange = (deck: 'A' | 'B', value: number[]) => {
@@ -249,14 +287,22 @@ export default function DashboardPage() {
     <div className="flex flex-col h-[calc(100vh-8rem)] w-full gap-4">
         {/* Top Section: Players and Mixer */}
         <div className="grid grid-cols-[1fr_minmax(200px,auto)_1fr] gap-4 items-center">
-            <PlayerDeck deck="A" state={deckA} onPlay={() => togglePlay('A')} onVolumeChange={(v) => handleVolumeChange('A', v)} />
+            <PlayerDeck 
+                deck="A"
+                state={deckA}
+                onPlay={() => togglePlay('A')}
+                onStop={() => handleStop('A')}
+                onSeek={(amount) => handleSeek('A', amount)}
+                onVolumeChange={(v) => handleVolumeChange('A', v)}
+                onProgressChange={(v) => handleProgressChange('A', v)}
+            />
 
             <Card className="flex flex-col justify-center items-center p-4 h-full bg-card/50 border-0 shadow-none">
-                <CardTitle className="font-headline text-center text-2xl mb-4">Mixer</CardTitle>
+                <CardTitle className="font-headline text-center text-xl mb-2">Mixer</CardTitle>
                  <div className="w-full flex items-center gap-4 text-sm font-bold">
                     <span className="text-primary">A</span>
                     <Slider
-                        defaultValue={[crossfader]}
+                        value={[crossfader]}
                         min={-100}
                         max={100}
                         step={1}
@@ -266,7 +312,15 @@ export default function DashboardPage() {
                 </div>
             </Card>
             
-            <PlayerDeck deck="B" state={deckB} onPlay={() => togglePlay('B')} onVolumeChange={(v) => handleVolumeChange('B', v)} />
+            <PlayerDeck 
+                deck="B"
+                state={deckB}
+                onPlay={() => togglePlay('B')}
+                onStop={() => handleStop('B')}
+                onSeek={(amount) => handleSeek('B', amount)}
+                onVolumeChange={(v) => handleVolumeChange('B', v)}
+                onProgressChange={(v) => handleProgressChange('B', v)}
+            />
         </div>
 
         <Separator />
@@ -274,12 +328,12 @@ export default function DashboardPage() {
         {/* Bottom Section: Library and Playlist */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4 flex-1 min-h-0">
             <Card className="flex flex-col">
-                <CardHeader>
-                    <CardTitle className="font-headline flex items-center gap-2 text-2xl"><Music /> Track Library</CardTitle>
+                <CardHeader className="p-4">
+                    <CardTitle className="font-headline flex items-center gap-2 text-xl"><Music className="h-5 w-5"/> Track Library</CardTitle>
                 </CardHeader>
                 <CardContent className="flex-1 overflow-hidden p-0">
                    <ScrollArea className="h-full">
-                     <div className="p-6 pt-0">
+                     <div className="p-2 pt-0">
                         <TrackTable 
                             tracks={dummyTracks}
                             onLoadA={loadTrack}
@@ -292,12 +346,12 @@ export default function DashboardPage() {
                 </CardContent>
             </Card>
              <Card className="flex flex-col">
-                <CardHeader>
-                    <CardTitle className="font-headline flex items-center gap-2 text-2xl"><ListMusic /> Playlist</CardTitle>
+                <CardHeader className="p-4">
+                    <CardTitle className="font-headline flex items-center gap-2 text-xl"><ListMusic className="h-5 w-5"/> Playlist</CardTitle>
                 </CardHeader>
                 <CardContent className="flex-1 overflow-hidden p-0">
                    <ScrollArea className="h-full">
-                     <div className="p-6 pt-0">
+                     <div className="p-2 pt-0">
                        {playlist.length > 0 ? (
                            <TrackTable 
                                tracks={playlist}
@@ -307,7 +361,7 @@ export default function DashboardPage() {
                                isPlaylist={true}
                            />
                        ) : (
-                           <div className="flex items-center justify-center h-full text-muted-foreground">
+                           <div className="flex items-center justify-center h-full text-muted-foreground text-sm p-4 text-center">
                                <p>Add tracks from the library to build your playlist.</p>
                            </div>
                        )}
@@ -317,16 +371,8 @@ export default function DashboardPage() {
             </Card>
         </div>
 
-        <audio ref={audioRefA} loop onTimeUpdate={(e) => {
-            const audio = e.currentTarget;
-            const progress = (audio.currentTime / audio.duration) * 100;
-            setDeckA(d => ({ ...d, progress: isNaN(progress) ? 0 : progress, currentTime: audio.currentTime }));
-        }} />
-        <audio ref={audioRefB} loop onTimeUpdate={(e) => {
-            const audio = e.currentTarget;
-            const progress = (audio.currentTime / audio.duration) * 100;
-            setDeckB(d => ({ ...d, progress: isNaN(progress) ? 0 : progress, currentTime: audio.currentTime }));
-        }} />
+        <audio ref={audioRefA} loop />
+        <audio ref={audioRefB} loop />
         <audio ref={previewAudioRef} />
     </div>
   );
