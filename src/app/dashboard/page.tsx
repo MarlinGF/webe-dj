@@ -174,6 +174,7 @@ export default function DashboardPage() {
   const [playlist, setPlaylist] = useState<Track[]>([]);
   const [crossfader, setCrossfader] = useState(0); // -100 for A, 100 for B
   const [isProcessing, setIsProcessing] = useState(false);
+  const [isDragging, setIsDragging] = useState(false);
 
   const audioRefA = useRef<HTMLAudioElement>(null);
   const audioRefB = useRef<HTMLAudioElement>(null);
@@ -218,8 +219,7 @@ export default function DashboardPage() {
     };
   }, [deckA.isPlaying, deckB.isPlaying]);
 
-  const handleFileSelect = async (event: ChangeEvent<HTMLInputElement>) => {
-    const files = event.target.files;
+  const handleFiles = async (files: FileList | null) => {
     if (!files || files.length === 0) return;
 
     setIsProcessing(true);
@@ -254,9 +254,39 @@ export default function DashboardPage() {
 
     setLibraryTracks(prev => [...prev, ...newTracks].sort((a,b) => a.title.localeCompare(b.title)));
     setIsProcessing(false);
+  };
 
+  const handleFileSelect = (event: ChangeEvent<HTMLInputElement>) => {
+    handleFiles(event.target.files);
     if (fileInputRef.current) {
       fileInputRef.current.value = '';
+    }
+  };
+
+  const handleDragEnter = (e: React.DragEvent<HTMLDivElement>) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragging(true);
+  };
+
+  const handleDragLeave = (e: React.DragEvent<HTMLDivElement>) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragging(false);
+  };
+  
+  const handleDragOver = (e: React.DragEvent<HTMLDivElement>) => {
+    e.preventDefault();
+    e.stopPropagation();
+  };
+
+  const handleDrop = (e: React.DragEvent<HTMLDivElement>) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragging(false);
+    if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
+      handleFiles(e.dataTransfer.files);
+      e.dataTransfer.clearData();
     }
   };
 
@@ -380,7 +410,19 @@ export default function DashboardPage() {
 
         {/* Bottom Section: Library and Playlist */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4 flex-1 min-h-0">
-            <Card className="flex flex-col">
+            <Card 
+                className={`flex flex-col relative transition-colors duration-200 ${isDragging ? 'border-primary bg-primary/10' : ''}`}
+                onDragEnter={handleDragEnter}
+                onDragOver={handleDragOver}
+                onDragLeave={handleDragLeave}
+                onDrop={handleDrop}
+            >
+                {isDragging && (
+                  <div className="absolute inset-0 z-10 flex flex-col items-center justify-center bg-background/80 rounded-lg pointer-events-none">
+                      <Upload className="h-10 w-10 text-primary animate-bounce" />
+                      <p className="mt-2 text-lg font-semibold text-primary">Drop files to upload</p>
+                  </div>
+                )}
                 <CardHeader className="p-4 flex-row items-center justify-between">
                     <CardTitle className="font-headline flex items-center gap-2 text-xl"><Music className="h-5 w-5"/> Track Library</CardTitle>
                     <input
@@ -409,7 +451,7 @@ export default function DashboardPage() {
                             />
                         ) : (
                            <div className="flex items-center justify-center h-full text-muted-foreground text-sm p-4 text-center">
-                               <p>Your library is empty. Click "Add Tracks" to get started.</p>
+                               <p>Your library is empty. Click "Add Tracks" or drag and drop files here.</p>
                            </div>
                         )}
                      </div>
