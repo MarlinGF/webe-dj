@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useRef, useEffect, type FC, type ChangeEvent } from 'react';
-import { Card, CardContent, CardDescription, CardTitle } from '@/components/ui/card';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Slider } from '@/components/ui/slider';
 import { Separator } from '@/components/ui/separator';
@@ -75,7 +75,7 @@ const PlayerDeck: FC<{
             </div>
 
             <div className="space-y-1 h-12">
-                <p className="font-bold text-base truncate" title={state.track?.title ?? ''}>{state.track?.title ?? 'No Track Loaded'}</p>
+                <p className="font-bold text-lg truncate" title={state.track?.title ?? ''}>{state.track?.title ?? 'No Track Loaded'}</p>
                 <p className="text-xs text-muted-foreground truncate">{state.track?.artist ?? '---'}</p>
             </div>
             
