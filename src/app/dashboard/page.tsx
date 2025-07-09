@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useRef, useEffect, type FC, type ChangeEvent } from 'react';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
+import { Card, CardContent, CardDescription, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Slider } from '@/components/ui/slider';
 import { Separator } from '@/components/ui/separator';
@@ -136,18 +136,18 @@ const TrackTable: FC<{
     <Table>
         <TableHeader>
             <TableRow>
-                <TableHead className="py-1 px-4 text-xs h-auto">Title</TableHead>
-                <TableHead className="hidden sm:table-cell py-1 px-4 text-xs h-auto">Artist</TableHead>
-                <TableHead className="hidden md:table-cell text-right py-1 px-4 text-xs h-auto">Time</TableHead>
-                <TableHead className="text-right py-1 px-4 text-xs h-auto">Actions</TableHead>
+                <TableHead className="py-0 px-4 text-xs h-auto">Title</TableHead>
+                <TableHead className="hidden sm:table-cell py-0 px-4 text-xs h-auto">Artist</TableHead>
+                <TableHead className="hidden md:table-cell text-right py-0 px-4 text-xs h-auto">Time</TableHead>
+                <TableHead className="text-right py-0 px-4 text-xs h-auto">Actions</TableHead>
             </TableRow>
         </TableHeader>
         <TableBody>
             {tracks.map((track) => (
                 <TableRow key={track.id} className="h-auto">
-                    <TableCell className="font-medium py-1 px-4 text-xs">{track.title}</TableCell>
-                    <TableCell className="hidden sm:table-cell py-1 px-4 text-xs">{track.artist}</TableCell>
-                    <TableCell className="hidden md:table-cell text-right font-code py-1 px-4 text-xs">{formatDuration(track.duration)}</TableCell>
+                    <TableCell className="font-medium py-0 px-4 text-xs">{track.title}</TableCell>
+                    <TableCell className="hidden sm:table-cell py-0 px-4 text-xs">{track.artist}</TableCell>
+                    <TableCell className="hidden md:table-cell text-right font-code py-0 px-4 text-xs">{formatDuration(track.duration)}</TableCell>
                     <TableCell className="text-right space-x-1 py-0 px-4">
                         <Button variant="ghost" size="icon" onClick={() => onPreview(track)} title="Preview Track" className="h-6 w-6">
                             <Headphones className="h-3 w-3" />
