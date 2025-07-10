@@ -11,8 +11,6 @@
     "source": ".",
     "ignore": [
       "firebase.json",
-      "firestore.rules",
-      "storage.rules",
       "**/.*",
       "**/node_modules/**"
     ]
