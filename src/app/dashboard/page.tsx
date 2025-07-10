@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState, useRef, useEffect, type FC, type ChangeEvent } from 'react';
@@ -444,8 +445,8 @@ export default function DashboardPage() {
                         {libraryTracks.length > 0 ? (
                             <TrackTable 
                                 tracks={libraryTracks}
-                                onLoadA={loadTrack}
-                                onLoadB={loadTrack}
+                                onLoadA={(track) => loadTrack('A', track)}
+                                onLoadB={(track) => loadTrack('B', track)}
                                 onPreview={previewTrack}
                                 onAddToPlaylist={handleAddToPlaylist}
                             />
@@ -468,8 +469,8 @@ export default function DashboardPage() {
                        {playlist.length > 0 ? (
                            <TrackTable 
                                tracks={playlist}
-                               onLoadA={loadTrack}
-                               onLoadB={loadTrack}
+                               onLoadA={(track) => loadTrack('A', track)}
+                               onLoadB={(track) => loadTrack('B', track)}
                                onPreview={previewTrack}
                                isPlaylist={true}
                            />
