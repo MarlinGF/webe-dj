@@ -23,6 +23,7 @@ import {
   Square,
   Upload,
   Loader2,
+  MapPin,
 } from 'lucide-react';
 
 export interface Track {
@@ -40,6 +41,7 @@ interface DeckState {
   isLive: boolean;
   progress: number;
   currentTime: number;
+  startTime: number;
 }
 
 const initialDeckState: DeckState = {
@@ -49,6 +51,7 @@ const initialDeckState: DeckState = {
   isLive: false,
   progress: 0,
   currentTime: 0,
+  startTime: 0,
 };
 
 const formatDuration = (seconds: number) => {
@@ -65,7 +68,8 @@ const PlayerDeck: FC<{
     onSeek: (amount: number) => void;
     onVolumeChange: (value: number[]) => void;
     onProgressChange: (value: number[]) => void;
-}> = ({ deck, state, onPlay, onStop, onSeek, onVolumeChange, onProgressChange }) => (
+    onSetCue: () => void;
+}> = ({ deck, state, onPlay, onStop, onSeek, onVolumeChange, onProgressChange, onSetCue }) => (
     <Card className="flex-1 bg-card/50 border-0 shadow-none">
         <CardContent className="p-3 space-y-2">
             <div className="flex justify-between items-center">
@@ -106,6 +110,9 @@ const PlayerDeck: FC<{
                         </Button>
                         <Button size="icon" variant="ghost" onClick={() => onSeek(5)} disabled={!state.track} className="h-8 w-8">
                             <FastForward className="h-5 w-5" />
+                        </Button>
+                        <Button size="icon" variant="ghost" onClick={onSetCue} disabled={!state.track} className="h-8 w-8" title="Set Cue Point">
+                            <MapPin className="h-5 w-5" />
                         </Button>
                     </div>
 
@@ -173,7 +180,7 @@ export default function DashboardPage() {
   const [deckB, setDeckB] = useState<DeckState>(initialDeckState);
   const [libraryTracks, setLibraryTracks] = useState<Track[]>([]);
   const [playlist, setPlaylist] = useState<Track[]>([]);
-  const [crossfader, setCrossfader] = useState(0); // -100 for A, 100 for B
+  const [crossfader, setCrossfader] = useState(-100); // -100 for A, 100 for B
   const [isProcessing, setIsProcessing] = useState(false);
   const [isDragging, setIsDragging] = useState(false);
   const [fadeSpeed, setFadeSpeed] = useState(5); // seconds
@@ -300,7 +307,7 @@ export default function DashboardPage() {
     
     setDeck(prev => {
         if (prev.isPlaying) audioRef.current?.pause();
-        const newState = { ...initialDeckState, track: track, volume: prev.volume };
+        const newState = { ...initialDeckState, track: track, volume: prev.volume, startTime: 0 };
         if (audioRef.current) {
             audioRef.current.src = track.url;
             audioRef.current.load();
@@ -327,11 +334,12 @@ export default function DashboardPage() {
   const handleStop = (deck: 'A' | 'B') => {
     const audioRef = deck === 'A' ? audioRefA : audioRefB;
     const setState = deck === 'A' ? setDeckA : setDeckB;
-    if (audioRef.current) {
+    const state = deck === 'A' ? deckA : deckB;
+    if (audioRef.current && state.track) {
         audioRef.current.pause();
-        audioRef.current.currentTime = 0;
+        audioRef.current.currentTime = state.startTime;
+        setState(d => ({ ...d, isPlaying: false, currentTime: state.startTime, progress: (state.startTime / (state.track!.duration || 1)) * 100 }));
     }
-    setState(prev => ({ ...prev, isPlaying: false }));
   };
 
   const handleSeek = (deck: 'A' | 'B', amount: number) => {
@@ -371,6 +379,13 @@ export default function DashboardPage() {
     setIsFading(true);
     const startValue = crossfader;
     const endValue = startValue <= 0 ? 100 : -100;
+    
+    if (endValue > 0 && !deckB.isPlaying) { // Fading to B
+      togglePlay('B');
+    } else if (endValue < 0 && !deckA.isPlaying) { // Fading to A
+      togglePlay('A');
+    }
+    
     const duration = fadeSpeed * 1000;
     const intervalTime = 25;
     const totalSteps = duration / intervalTime;
@@ -390,6 +405,14 @@ export default function DashboardPage() {
         setCrossfader(nextValue);
       }
     }, intervalTime);
+  };
+
+  const handleSetCue = (deck: 'A' | 'B') => {
+    const audioRef = deck === 'A' ? audioRefA : audioRefB;
+    const setState = deck === 'A' ? setDeckA : setDeckB;
+    if (audioRef.current) {
+        setState(d => ({ ...d, startTime: audioRef.current.currentTime }));
+    }
   };
   
   const previewTrack = (track: Track) => {
@@ -419,6 +442,7 @@ export default function DashboardPage() {
                 onSeek={(amount) => handleSeek('A', amount)}
                 onVolumeChange={(v) => handleVolumeChange('A', v)}
                 onProgressChange={(v) => handleProgressChange('A', v)}
+                onSetCue={() => handleSetCue('A')}
             />
 
             <Card className="flex flex-col justify-center items-center p-4 h-full bg-card/50 border-0 shadow-none">
@@ -462,6 +486,7 @@ export default function DashboardPage() {
                 onSeek={(amount) => handleSeek('B', amount)}
                 onVolumeChange={(v) => handleVolumeChange('B', v)}
                 onProgressChange={(v) => handleProgressChange('B', v)}
+                onSetCue={() => handleSetCue('B')}
             />
         </div>
 
@@ -503,8 +528,8 @@ export default function DashboardPage() {
                         {libraryTracks.length > 0 ? (
                             <TrackTable 
                                 tracks={libraryTracks}
-                                onLoadA={(track) => loadTrack('A', track)}
-                                onLoadB={(track) => loadTrack('B', track)}
+                                onLoadA={track => loadTrack('A', track)}
+                                onLoadB={track => loadTrack('B', track)}
                                 onPreview={previewTrack}
                                 onAddToPlaylist={handleAddToPlaylist}
                             />
@@ -527,8 +552,8 @@ export default function DashboardPage() {
                        {playlist.length > 0 ? (
                            <TrackTable 
                                tracks={playlist}
-                               onLoadA={(track) => loadTrack('A', track)}
-                               onLoadB={(track) => loadTrack('B', track)}
+                               onLoadA={track => loadTrack('A', track)}
+                               onLoadB={track => loadTrack('B', track)}
                                onPreview={previewTrack}
                                isPlaylist={true}
                            />
@@ -543,10 +568,9 @@ export default function DashboardPage() {
             </Card>
         </div>
 
-        <audio ref={audioRefA} loop />
-        <audio ref={audioRefB} loop />
+        <audio ref={audioRefA} loop onLoadedMetadata={() => audioRefA.current && (audioRefA.current.currentTime = deckA.startTime)} />
+        <audio ref={audioRefB} loop onLoadedMetadata={() => audioRefB.current && (audioRefB.current.currentTime = deckB.startTime)} />
         <audio ref={previewAudioRef} />
     </div>
   );
 }
-
