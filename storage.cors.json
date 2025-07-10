@@ -1,21 +1,18 @@
+
 [
   {
-    "origin": [
-      "https://studio--we-be-live-xek44.us-central1.hosted.app",
-      "https://6000-firebase-studio-1750965828381.cluster-76blnmxvvzdpat4inoxk5tmzik.cloudworkstations.dev",
-      "http://localhost:9002"
-    ],
-    "method": [
-      "GET",
-      "POST",
-      "PUT",
-      "DELETE"
-    ],
+    "origin": ["*"],
+    "method": ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
     "header": [
       "Content-Type",
       "Authorization",
-      "X-Goog-Resumable"
+      "X-Goog-Resumable",
+      "X-Goog-Upload-Command",
+      "X-Goog-Upload-Offset",
+      "X-Goog-Upload-Protocol",
+      "X-Goog-Upload-Status"
     ],
-    "maxAgeSeconds": 3600
+    "maxAgeSeconds": 3600,
+    "responseHeader": ["Content-Type", "Content-Length", "ETag"]
   }
 ]
