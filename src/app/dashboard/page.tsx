@@ -167,8 +167,8 @@ const TrackTable: FC<{
                                 <PlusCircle className="h-3 w-3" />
                             </Button>
                         )}
-                        <Button size="sm" variant="outline" onClick={() => loadTrack('A', track)} className="h-6 px-2 text-xs">A</Button>
-                        <Button size="sm" variant="outline" onClick={() => loadTrack('B', track)} className="h-6 px-2 text-xs">B</Button>
+                        <Button size="sm" variant="outline" onClick={() => onLoadA(track)} className="h-6 px-2 text-xs">A</Button>
+                        <Button size="sm" variant="outline" onClick={() => onLoadB(track)} className="h-6 px-2 text-xs">B</Button>
                     </TableCell>
                 </TableRow>
             ))}
@@ -616,3 +616,4 @@ export default function DashboardPage() {
     </div>
   );
 }
+
