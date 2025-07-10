@@ -4,7 +4,8 @@
     "rules": "firestore.rules"
   },
   "storage": {
-    "rules": "storage.rules"
+    "rules": "storage.rules",
+    "cors": "storage.cors.json"
   },
   "hosting": {
     "source": ".",
@@ -12,6 +13,7 @@
       "firebase.json",
       "firestore.rules",
       "storage.rules",
+      "storage.cors.json",
       "**/.*",
       "**/node_modules/**"
     ]
