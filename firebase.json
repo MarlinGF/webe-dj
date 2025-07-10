@@ -13,7 +13,6 @@
       "firebase.json",
       "firestore.rules",
       "storage.rules",
-      "storage.cors.json",
       "**/.*",
       "**/node_modules/**"
     ]
