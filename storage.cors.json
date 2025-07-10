@@ -1,22 +1,9 @@
+
 [
   {
-    "origin": [
-      "http://localhost:9002",
-      "https://6000-firebase-studio-1750965828381.cluster-76blnmxvvzdpat4inoxk5tmzik.cloudworkstations.dev",
-      "https://studio--we-be-live-xek44.us-central1.hosted.app"
-    ],
-    "method": [
-      "GET",
-      "POST",
-      "PUT",
-      "DELETE",
-      "OPTIONS"
-    ],
-    "header": [
-      "Content-Type",
-      "Authorization",
-      "X-Goog-Resumable"
-    ],
+    "origin": ["*"],
+    "method": ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+    "header": ["Content-Type", "Authorization", "X-Goog-Resumable"],
     "maxAgeSeconds": 3600
   }
 ]

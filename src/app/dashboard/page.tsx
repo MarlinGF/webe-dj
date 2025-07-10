@@ -301,11 +301,11 @@ export default function DashboardPage() {
           console.log('Upload is ' + progress + '% done');
         },
         (error) => {
-          console.error('Upload failed:', error.code, error.message, error.customData);
+          console.error('Upload failed with error:', error.code, error.message);
           toast({
             variant: 'destructive',
             title: 'Upload Failed',
-            description: `Could not upload ${file.name}. Error: ${error.code}`,
+            description: `Could not upload ${file.name}. Error: ${error.message}`,
           });
         },
         async () => {

@@ -1,11 +1,5 @@
+
 {
-  "firestore": {
-    "rules": "firestore.rules"
-  },
-  "storage": {
-    "rules": "storage.rules",
-    "cors": "storage.cors.json"
-  },
   "hosting": {
     "source": ".",
     "ignore": [
@@ -16,5 +10,12 @@
     "frameworksBackend": {
       "region": "us-central1"
     }
+  },
+  "storage": {
+    "rules": "storage.rules",
+    "cors": "storage.cors.json"
+  },
+  "firestore": {
+    "rules": "firestore.rules"
   }
 }
