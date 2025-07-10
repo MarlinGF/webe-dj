@@ -185,7 +185,8 @@ export default function DashboardPage() {
   const [crossfader, setCrossfader] = useState(-100); // -100 for A, 100 for B
   const [isProcessing, setIsProcessing] = useState(false);
   const [isDragging, setIsDragging] = useState(false);
-  const [fadeSpeed, setFadeSpeed] = useState(5); // seconds
+  const [fadeOutSpeed, setFadeOutSpeed] = useState(2); // seconds
+  const [fadeInSpeed, setFadeInSpeed] = useState(2); // seconds
   const [isFading, setIsFading] = useState(false);
   const [isAutoFadeEnabled, setIsAutoFadeEnabled] = useState(false);
 
@@ -193,22 +194,24 @@ export default function DashboardPage() {
   const audioRefB = useRef<HTMLAudioElement>(null);
   const previewAudioRef = useRef<HTMLAudioElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const fadeIntervalRef = useRef<NodeJS.Timeout | null>(null);
+  const fadeIntervalRef = useRef<number | null>(null);
   
   // Update audio volumes when faders or crossfader move
   useEffect(() => {
     const audioA = audioRefA.current;
     const audioB = audioRefB.current;
 
+    const normalizedCrossfader = (crossfader + 100) / 200;
+
     if (audioA) {
-        const crossfaderEffect = (100 - Math.max(0, crossfader)) / 100;
-        audioA.volume = (deckA.volume / 100) * crossfaderEffect;
+        const volumeMultiplier = 1 - normalizedCrossfader;
+        audioA.volume = (deckA.volume / 100) * volumeMultiplier;
         setDeckA(d => ({...d, isLive: d.isPlaying && audioA.volume > 0.01}));
     }
     
     if (audioB) {
-        const crossfaderEffect = (100 - Math.max(0, -crossfader)) / 100;
-        audioB.volume = (deckB.volume / 100) * crossfaderEffect;
+        const volumeMultiplier = normalizedCrossfader;
+        audioB.volume = (deckB.volume / 100) * volumeMultiplier;
         setDeckB(d => ({...d, isLive: d.isPlaying && audioB.volume > 0.01}));
     }
   }, [deckA.volume, deckB.volume, crossfader, deckA.isPlaying, deckB.isPlaying]);
@@ -368,46 +371,50 @@ export default function DashboardPage() {
 
   const handleCrossfaderChange = (value: number[]) => {
     if (fadeIntervalRef.current) {
-      clearInterval(fadeIntervalRef.current);
+      cancelAnimationFrame(fadeIntervalRef.current);
       fadeIntervalRef.current = null;
       setIsFading(false);
     }
     setCrossfader(value[0]);
   };
 
-  const handleAutoFade = () => {
+  const handleAutoFade = (fadeToDeck: 'A' | 'B') => {
     if (isFading) return;
-    if (fadeIntervalRef.current) clearInterval(fadeIntervalRef.current);
+    if (fadeIntervalRef.current) {
+        cancelAnimationFrame(fadeIntervalRef.current);
+    }
     
     setIsFading(true);
     const startValue = crossfader;
-    const endValue = startValue <= 0 ? 100 : -100;
-    
-    if (endValue > 0 && !deckB.isPlaying) { // Fading to B
-      togglePlay('B');
-    } else if (endValue < 0 && !deckA.isPlaying) { // Fading to A
-      togglePlay('A');
+    const endValue = fadeToDeck === 'B' ? 100 : -100;
+
+    const deckToPlayState = fadeToDeck === 'A' ? deckA : deckB;
+    if (!deckToPlayState.isPlaying) {
+        togglePlay(fadeToDeck);
     }
     
-    const duration = fadeSpeed * 1000;
-    const intervalTime = 25;
-    const totalSteps = duration / intervalTime;
-    const stepValue = (endValue - startValue) / totalSteps;
-    let currentStep = 0;
+    // Use fadeOutSpeed for the transition duration
+    const duration = fadeOutSpeed * 1000;
+    let startTime: number | null = null;
 
-    fadeIntervalRef.current = setInterval(() => {
-      currentStep++;
-      const nextValue = startValue + (stepValue * currentStep);
-      
-      if ((stepValue > 0 && nextValue >= endValue) || (stepValue < 0 && nextValue <= endValue)) {
-        setCrossfader(endValue);
-        clearInterval(fadeIntervalRef.current!);
-        fadeIntervalRef.current = null;
-        setIsFading(false);
-      } else {
-        setCrossfader(nextValue);
-      }
-    }, intervalTime);
+    const animate = (timestamp: number) => {
+        if (!startTime) startTime = timestamp;
+        const elapsedTime = timestamp - startTime;
+        const progress = Math.min(elapsedTime / duration, 1);
+
+        const currentValue = startValue + (endValue - startValue) * progress;
+        setCrossfader(currentValue);
+
+        if (progress < 1) {
+            fadeIntervalRef.current = requestAnimationFrame(animate);
+        } else {
+            setCrossfader(endValue);
+            setIsFading(false);
+            fadeIntervalRef.current = null;
+        }
+    };
+
+    fadeIntervalRef.current = requestAnimationFrame(animate);
   };
   
   const handleTrackEnd = (deck: 'A' | 'B') => {
@@ -422,11 +429,15 @@ export default function DashboardPage() {
             const nextIndex = (currentIndex + 1) % playlist.length;
             const nextTrack = playlist[nextIndex];
             loadTrack(deck, nextTrack);
+
+            if (isAutoFadeEnabled) {
+                const deckToStart = deck === 'A' ? 'B' : 'A';
+                handleAutoFade(deckToStart);
+            }
         }
-    }
-    
-    if (isAutoFadeEnabled) {
-      handleAutoFade();
+    } else if (isAutoFadeEnabled) {
+        const deckToStart = deck === 'A' ? 'B' : 'A';
+        handleAutoFade(deckToStart);
     }
   };
 
@@ -492,22 +503,31 @@ export default function DashboardPage() {
                         />
                     </div>
                     <div className="flex items-center gap-2">
-                        <Label htmlFor="fadespeed-slider" className="text-xs text-muted-foreground w-16">Fade Speed</Label>
+                        <Label htmlFor="fadeoutspeed-slider" className="text-xs text-muted-foreground w-16">Fade Out</Label>
                         <Slider
-                            id="fadespeed-slider"
-                            value={[fadeSpeed]}
+                            id="fadeoutspeed-slider"
+                            value={[fadeOutSpeed]}
                             min={1}
                             max={10}
                             step={1}
-                            onValueChange={(v) => setFadeSpeed(v[0])}
+                            onValueChange={(v) => setFadeOutSpeed(v[0])}
                             disabled={isFading}
                         />
-                        <span className="text-xs font-code w-10 text-right">{fadeSpeed}s</span>
+                        <span className="text-xs font-code w-10 text-right">{fadeOutSpeed}s</span>
                     </div>
-                    <Button onClick={handleAutoFade} disabled={isFading} className="w-full">
-                        {isFading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                        Manual Fade
-                    </Button>
+                    <div className="flex items-center gap-2">
+                        <Label htmlFor="fadeinspeed-slider" className="text-xs text-muted-foreground w-16">Fade In</Label>
+                        <Slider
+                            id="fadeinspeed-slider"
+                            value={[fadeInSpeed]}
+                            min={1}
+                            max={10}
+                            step={1}
+                            onValueChange={(v) => setFadeInSpeed(v[0])}
+                            disabled={isFading}
+                        />
+                        <span className="text-xs font-code w-10 text-right">{fadeInSpeed}s</span>
+                    </div>
                 </div>
             </Card>
             
@@ -561,8 +581,8 @@ export default function DashboardPage() {
                         {libraryTracks.length > 0 ? (
                             <TrackTable 
                                 tracks={libraryTracks}
-                                onLoadA={(track) => loadTrack('A', track)}
-                                onLoadB={(track) => loadTrack('B', track)}
+                                onLoadA={track => loadTrack('A', track)}
+                                onLoadB={track => loadTrack('B', track)}
                                 onPreview={previewTrack}
                                 onAddToPlaylist={handleAddToPlaylist}
                             />
@@ -585,8 +605,8 @@ export default function DashboardPage() {
                        {playlist.length > 0 ? (
                            <TrackTable 
                                tracks={playlist}
-                               onLoadA={(track) => loadTrack('A', track)}
-                               onLoadB={(track) => loadTrack('B', track)}
+                               onLoadA={track => loadTrack('A', track)}
+                               onLoadB={track => loadTrack('B', track)}
                                onPreview={previewTrack}
                                isPlaylist={true}
                            />
