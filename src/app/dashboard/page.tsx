@@ -176,11 +176,14 @@ export default function DashboardPage() {
   const [crossfader, setCrossfader] = useState(0); // -100 for A, 100 for B
   const [isProcessing, setIsProcessing] = useState(false);
   const [isDragging, setIsDragging] = useState(false);
+  const [fadeSpeed, setFadeSpeed] = useState(5); // seconds
+  const [isFading, setIsFading] = useState(false);
 
   const audioRefA = useRef<HTMLAudioElement>(null);
   const audioRefB = useRef<HTMLAudioElement>(null);
   const previewAudioRef = useRef<HTMLAudioElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const fadeIntervalRef = useRef<NodeJS.Timeout | null>(null);
   
   // Update audio volumes when faders or crossfader move
   useEffect(() => {
@@ -351,6 +354,43 @@ export default function DashboardPage() {
     const setState = deck === 'A' ? setDeckA : setDeckB;
     setState(prev => ({ ...prev, volume: value[0] }));
   };
+
+  const handleCrossfaderChange = (value: number[]) => {
+    if (fadeIntervalRef.current) {
+      clearInterval(fadeIntervalRef.current);
+      fadeIntervalRef.current = null;
+      setIsFading(false);
+    }
+    setCrossfader(value[0]);
+  };
+
+  const handleAutoFade = () => {
+    if (isFading) return;
+    if (fadeIntervalRef.current) clearInterval(fadeIntervalRef.current);
+    
+    setIsFading(true);
+    const startValue = crossfader;
+    const endValue = startValue <= 0 ? 100 : -100;
+    const duration = fadeSpeed * 1000;
+    const intervalTime = 25;
+    const totalSteps = duration / intervalTime;
+    const stepValue = (endValue - startValue) / totalSteps;
+    let currentStep = 0;
+
+    fadeIntervalRef.current = setInterval(() => {
+      currentStep++;
+      const nextValue = startValue + (stepValue * currentStep);
+      
+      if ((stepValue > 0 && nextValue >= endValue) || (stepValue < 0 && nextValue <= endValue)) {
+        setCrossfader(endValue);
+        clearInterval(fadeIntervalRef.current!);
+        fadeIntervalRef.current = null;
+        setIsFading(false);
+      } else {
+        setCrossfader(nextValue);
+      }
+    }, intervalTime);
+  };
   
   const previewTrack = (track: Track) => {
       const audio = previewAudioRef.current;
@@ -390,9 +430,27 @@ export default function DashboardPage() {
                         min={-100}
                         max={100}
                         step={1}
-                        onValueChange={(v) => setCrossfader(v[0])}
+                        onValueChange={handleCrossfaderChange}
                     />
                     <span className="text-primary">B</span>
+                </div>
+                <div className="mt-4 w-full space-y-3">
+                    <div className="flex items-center gap-2">
+                        <span className="text-xs text-muted-foreground w-16">Fade Speed</span>
+                        <Slider
+                            value={[fadeSpeed]}
+                            min={1}
+                            max={10}
+                            step={1}
+                            onValueChange={(v) => setFadeSpeed(v[0])}
+                            disabled={isFading}
+                        />
+                        <span className="text-xs font-code w-10 text-right">{fadeSpeed}s</span>
+                    </div>
+                    <Button onClick={handleAutoFade} disabled={isFading} className="w-full">
+                        {isFading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                        Auto Fade
+                    </Button>
                 </div>
             </Card>
             
@@ -491,3 +549,4 @@ export default function DashboardPage() {
     </div>
   );
 }
+
