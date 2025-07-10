@@ -203,8 +203,8 @@ export default function DashboardPage() {
   const [isProcessing, setIsProcessing] = useState(false);
   const [isDragging, setIsDragging] = useState(false);
   const [fadeSpeed, setFadeSpeed] = useState(2); // seconds
-  const [isFading, setIsFading] = useState(isAutoFadeEnabled);
   const [isAutoFadeEnabled, setIsAutoFadeEnabled] = useState(false);
+  const [isFading, setIsFading] = useState(isAutoFadeEnabled);
 
   const audioRefA = useRef<HTMLAudioElement>(null);
   const audioRefB = useRef<HTMLAudioElement>(null);
@@ -668,5 +668,7 @@ export default function DashboardPage() {
     </div>
   );
 }
+
+    
 
     
