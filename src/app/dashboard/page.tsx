@@ -203,7 +203,7 @@ export default function DashboardPage() {
   const [isProcessing, setIsProcessing] = useState(false);
   const [isDragging, setIsDragging] = useState(false);
   const [fadeSpeed, setFadeSpeed] = useState(2); // seconds
-  const [isFading, setIsFading] = useState(false);
+  const [isFading, setIsFading] = useState(isAutoFadeEnabled);
   const [isAutoFadeEnabled, setIsAutoFadeEnabled] = useState(false);
 
   const audioRefA = useRef<HTMLAudioElement>(null);
@@ -292,7 +292,9 @@ export default function DashboardPage() {
         const storagePath = `users/${user.uid}/tracks/${Date.now()}-${file.name}`;
         const trackStorageRef = storageRef(storage, storagePath);
         
-        await uploadBytes(trackStorageRef, file);
+        // Add content type metadata to force a simpler upload request
+        const metadata = { contentType: file.type };
+        await uploadBytes(trackStorageRef, file, metadata);
         const downloadURL = await getDownloadURL(trackStorageRef);
 
         const duration = await new Promise<number>((resolve, reject) => {
@@ -666,3 +668,5 @@ export default function DashboardPage() {
     </div>
   );
 }
+
+    
