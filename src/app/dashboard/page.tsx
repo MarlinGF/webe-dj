@@ -2,6 +2,22 @@
 'use client';
 
 import { useState, useRef, useEffect, type FC, type ChangeEvent } from 'react';
+import {
+  collection,
+  addDoc,
+  query,
+  onSnapshot,
+  orderBy,
+  serverTimestamp,
+} from 'firebase/firestore';
+import {
+  ref as storageRef,
+  uploadBytes,
+  getDownloadURL,
+} from 'firebase/storage';
+import { useAuth } from '@/hooks/use-auth';
+import { db, storage } from '@/lib/firebase';
+
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Slider } from '@/components/ui/slider';
@@ -34,6 +50,7 @@ export interface Track {
   artist: string;
   duration: number; // in seconds
   url: string; 
+  storagePath: string;
 }
 
 interface DeckState {
@@ -194,7 +211,37 @@ export default function DashboardPage() {
   const previewAudioRef = useRef<HTMLAudioElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const fadeIntervalRef = useRef<number | null>(null);
+
+  const { user } = useAuth();
   
+  useEffect(() => {
+    if (!user) {
+      setLibraryTracks([]);
+      return;
+    }
+
+    const tracksCollection = collection(db, 'users', user.uid, 'tracks');
+    const q = query(tracksCollection, orderBy('createdAt', 'desc'));
+
+    const unsubscribe = onSnapshot(q, (querySnapshot) => {
+      const tracksData: Track[] = [];
+      querySnapshot.forEach((doc) => {
+        const data = doc.data();
+        tracksData.push({
+          id: doc.id,
+          title: data.title,
+          artist: data.artist,
+          duration: data.duration,
+          url: data.url,
+          storagePath: data.storagePath,
+        });
+      });
+      setLibraryTracks(tracksData);
+    });
+
+    return () => unsubscribe();
+  }, [user]);
+
   // Update audio volumes when faders or crossfader move
   useEffect(() => {
     const audioA = audioRefA.current;
@@ -236,41 +283,44 @@ export default function DashboardPage() {
   }, [deckA.isPlaying, deckB.isPlaying]);
 
   const handleFiles = async (files: FileList | null) => {
-    if (!files || files.length === 0) return;
+    if (!files || files.length === 0 || !user) return;
 
     setIsProcessing(true);
-    const newTracks: Track[] = [];
 
     for (const file of Array.from(files)) {
       try {
-        const url = URL.createObjectURL(file);
+        const storagePath = `users/${user.uid}/tracks/${Date.now()}-${file.name}`;
+        const trackStorageRef = storageRef(storage, storagePath);
+        
+        await uploadBytes(trackStorageRef, file);
+        const downloadURL = await getDownloadURL(trackStorageRef);
 
         const duration = await new Promise<number>((resolve, reject) => {
           const audio = document.createElement('audio');
           audio.addEventListener('loadedmetadata', () => {
             resolve(audio.duration);
           });
-          audio.addEventListener('error', (e) => reject(`Error loading audio duration for ${file.name}`));
-          audio.src = url;
+          audio.addEventListener('error', () => reject(`Error loading audio duration for ${file.name}`));
+          audio.src = downloadURL;
         });
 
-        const newTrack: Track = {
-          id: `${Date.now()}-${file.name}`,
-          title: file.name.replace(/\.[^/.]+$/, ""),
-          artist: 'Unknown Artist',
-          duration: duration,
-          url: url,
-        };
-
-        newTracks.push(newTrack);
+        const tracksCollection = collection(db, 'users', user.uid, 'tracks');
+        await addDoc(tracksCollection, {
+            title: file.name.replace(/\.[^/.]+$/, ""),
+            artist: 'Unknown Artist',
+            duration: duration,
+            url: downloadURL,
+            storagePath: storagePath,
+            createdAt: serverTimestamp(),
+        });
       } catch (error) {
         console.error('Error processing file:', file.name, error);
       }
     }
-
-    setLibraryTracks(prev => [...prev, ...newTracks].sort((a,b) => a.title.localeCompare(b.title)));
+    
     setIsProcessing(false);
   };
+
 
   const handleFileSelect = (event: ChangeEvent<HTMLInputElement>) => {
     handleFiles(event.target.files);
@@ -616,4 +666,3 @@ export default function DashboardPage() {
     </div>
   );
 }
-
