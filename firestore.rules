@@ -1,17 +1,13 @@
-
 rules_version = '2';
-
 service cloud.firestore {
   match /databases/{database}/documents {
+    // Users can only read and write to their own tracks collection
     match /users/{userId}/tracks/{trackId} {
-      // A user can get, update, or delete their own track.
-      allow get, update, delete: if request.auth != null && request.auth.uid == userId;
-      // Anyone authenticated can create a track for their own user ID.
-      allow create: if request.auth != null && request.auth.uid == userId;
+      allow read, write: if request.auth != null && request.auth.uid == userId;
     }
+    // Users can only list their own tracks
     match /users/{userId}/tracks {
-        // A user can query their own tracks.
-        allow list: if request.auth != null && request.auth.uid == userId;
+      allow list: if request.auth != null && request.auth.uid == userId;
     }
   }
 }
