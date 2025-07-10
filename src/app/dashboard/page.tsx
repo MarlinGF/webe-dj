@@ -12,7 +12,7 @@ import {
 } from 'firebase/firestore';
 import {
   ref as storageRef,
-  uploadBytes,
+  uploadBytesResumable,
   getDownloadURL,
 } from 'firebase/storage';
 import { useAuth } from '@/hooks/use-auth';
@@ -43,6 +43,7 @@ import {
 } from 'lucide-react';
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
+import { useToast } from '@/hooks/use-toast';
 
 export interface Track {
   id: string;
@@ -213,6 +214,7 @@ export default function DashboardPage() {
   const fadeIntervalRef = useRef<number | null>(null);
 
   const { user } = useAuth();
+  const { toast } = useToast();
   
   useEffect(() => {
     if (!user) {
@@ -288,36 +290,50 @@ export default function DashboardPage() {
     setIsProcessing(true);
 
     for (const file of Array.from(files)) {
-      try {
-        const storagePath = `users/${user.uid}/tracks/${Date.now()}-${file.name}`;
-        const trackStorageRef = storageRef(storage, storagePath);
-        
-        await uploadBytes(trackStorageRef, file, null);
-        const downloadURL = await getDownloadURL(trackStorageRef);
+      const storagePath = `users/${user.uid}/tracks/${Date.now()}-${file.name}`;
+      const trackStorageRef = storageRef(storage, storagePath);
+      const uploadTask = uploadBytesResumable(trackStorageRef, file);
 
-        const duration = await new Promise<number>((resolve, reject) => {
-          const audio = document.createElement('audio');
-          audio.addEventListener('loadedmetadata', () => {
-            resolve(audio.duration);
+      uploadTask.on('state_changed',
+        (snapshot) => {
+          // Optional: handle progress updates
+          const progress = (snapshot.bytesTransferred / snapshot.totalBytes) * 100;
+          console.log('Upload is ' + progress + '% done');
+        },
+        (error) => {
+          console.error('Upload failed:', error.code, error.message, error.customData);
+          toast({
+            variant: 'destructive',
+            title: 'Upload Failed',
+            description: `Could not upload ${file.name}. Error: ${error.code}`,
           });
-          audio.addEventListener('error', () => reject(`Error loading audio duration for ${file.name}`));
-          audio.src = downloadURL;
-        });
+        },
+        async () => {
+          try {
+            const downloadURL = await getDownloadURL(uploadTask.snapshot.ref);
+            const duration = await new Promise<number>((resolve, reject) => {
+              const audio = document.createElement('audio');
+              audio.addEventListener('loadedmetadata', () => resolve(audio.duration));
+              audio.addEventListener('error', () => reject(`Error loading audio duration for ${file.name}`));
+              audio.src = downloadURL;
+            });
 
-        const tracksCollection = collection(db, 'users', user.uid, 'tracks');
-        await addDoc(tracksCollection, {
-            title: file.name.replace(/\.[^/.]+$/, ""),
-            artist: 'Unknown Artist',
-            duration: duration,
-            url: downloadURL,
-            storagePath: storagePath,
-            createdAt: serverTimestamp(),
-        });
-      } catch (error) {
-        console.error('Error processing file:', file.name, error);
-      }
+            const tracksCollection = collection(db, 'users', user.uid, 'tracks');
+            await addDoc(tracksCollection, {
+              title: file.name.replace(/\.[^/.]+$/, ""),
+              artist: 'Unknown Artist',
+              duration: duration,
+              url: downloadURL,
+              storagePath: storagePath,
+              createdAt: serverTimestamp(),
+            });
+          } catch (innerError) {
+             console.error('Error processing file after upload:', file.name, innerError);
+          }
+        }
+      );
     }
-    
+    // Note: This is now optimistic. UI might show processing is done before all uploads are complete.
     setIsProcessing(false);
   };
 
@@ -666,9 +682,3 @@ export default function DashboardPage() {
     </div>
   );
 }
-
-    
-
-    
-
-    
