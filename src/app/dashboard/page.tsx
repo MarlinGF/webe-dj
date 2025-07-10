@@ -75,7 +75,7 @@ const PlayerDeck: FC<{
             </div>
 
             <div className="space-y-1 h-12">
-                <p className="font-bold text-lg truncate" title={state.track?.title ?? ''}>{state.track?.title ?? 'No Track Loaded'}</p>
+                <p className="font-bold text-xl truncate" title={state.track?.title ?? ''}>{state.track?.title ?? 'No Track Loaded'}</p>
                 <p className="text-xs text-muted-foreground truncate">{state.track?.artist ?? '---'}</p>
             </div>
             
