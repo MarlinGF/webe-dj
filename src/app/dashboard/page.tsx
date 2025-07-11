@@ -67,6 +67,7 @@ export interface Track {
   duration: number; // in seconds
   url: string; 
   storagePath: string;
+  createdAt?: any;
 }
 
 interface DeckState {
@@ -265,6 +266,7 @@ export default function DashboardPage() {
           duration: data.duration,
           url: data.url,
           storagePath: data.storagePath,
+          createdAt: data.createdAt,
         });
       });
       setLibraryTracks(tracksData);
@@ -781,5 +783,4 @@ export default function DashboardPage() {
         <audio ref={previewAudioRef} />
     </div>
   );
-
-    
+}
