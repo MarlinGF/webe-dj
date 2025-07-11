@@ -533,20 +533,37 @@ export default function DashboardPage() {
   const handleTrackEnd = (deck: 'A' | 'B') => {
     const setState = deck === 'A' ? setDeckA : setDeckB;
     setState(d => ({ ...d, isPlaying: false, progress: 100 }));
-
+  
     if (isAutoFadeEnabled) {
       handleAutoFade(deck === 'A' ? 'B' : 'A');
     }
-
-    const currentTrack = (deck === 'A' ? deckA : deckB).track;
-    
-    if (playlist.length > 0 && currentTrack) {
-        const currentIndex = playlist.findIndex(t => t.id === currentTrack.id);
-        if (currentIndex > -1) {
-            const nextIndex = (currentIndex + 1) % playlist.length;
-            const nextTrack = playlist[nextIndex];
-            loadTrack(deck, nextTrack);
-        }
+  
+    const endedTrack = (deck === 'A' ? deckA : deckB).track;
+    const otherDeckTrack = (deck === 'A' ? deckB : deckA).track;
+  
+    if (playlist.length > 1 && endedTrack) {
+      const currentIndex = playlist.findIndex(t => t.id === endedTrack.id);
+      if (currentIndex === -1) return;
+  
+      let nextIndex = (currentIndex + 1) % playlist.length;
+      let nextTrack = playlist[nextIndex];
+  
+      // If the next track is the same as the one on the other deck, skip it.
+      // This loop will continue until it finds a suitable track or it has checked the whole playlist.
+      let attempts = 0;
+      while (otherDeckTrack && nextTrack.id === otherDeckTrack.id && attempts < playlist.length) {
+        nextIndex = (nextIndex + 1) % playlist.length;
+        nextTrack = playlist[nextIndex];
+        attempts++;
+      }
+      
+      // Only load if we found a different track (or if the playlist only has one song)
+      if (attempts < playlist.length) {
+        loadTrack(deck, nextTrack);
+      }
+    } else if (playlist.length === 1 && endedTrack) {
+      // If there's only one song, reload it
+      loadTrack(deck, playlist[0]);
     }
   };
 
