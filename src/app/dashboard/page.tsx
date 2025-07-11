@@ -9,11 +9,14 @@ import {
   onSnapshot,
   orderBy,
   serverTimestamp,
+  doc,
+  deleteDoc,
 } from 'firebase/firestore';
 import {
   ref as storageRef,
   uploadBytesResumable,
   getDownloadURL,
+  deleteObject,
 } from 'firebase/storage';
 import { useAuth } from '@/hooks/use-auth';
 import { db, storage } from '@/lib/firebase';
@@ -25,6 +28,16 @@ import { Separator } from '@/components/ui/separator';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
 import { ScrollArea } from '@/components/ui/scroll-area';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
 import {
   Play,
   Pause,
@@ -40,6 +53,8 @@ import {
   Upload,
   Loader2,
   MapPin,
+  Trash2,
+  X,
 } from 'lucide-react';
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
@@ -159,8 +174,10 @@ const TrackTable: FC<{
     onLoadB: (track: Track) => void;
     onPreview: (track: Track) => void;
     onAddToPlaylist?: (track: Track) => void;
+    onRemoveFromPlaylist?: (trackId: string) => void;
+    onDeleteFromLibrary?: (track: Track) => void;
     isPlaylist?: boolean;
-}> = ({ tracks, onLoadA, onLoadB, onPreview, onAddToPlaylist, isPlaylist = false }) => (
+}> = ({ tracks, onLoadA, onLoadB, onPreview, onAddToPlaylist, onRemoveFromPlaylist, onDeleteFromLibrary, isPlaylist = false }) => (
     <Table>
         <TableHeader>
             <TableRow>
@@ -185,6 +202,16 @@ const TrackTable: FC<{
                                 <PlusCircle className="h-3 w-3" />
                             </Button>
                         )}
+                        {isPlaylist && onRemoveFromPlaylist && (
+                           <Button variant="ghost" size="icon" onClick={() => onRemoveFromPlaylist(track.id)} title="Remove from Playlist" className="h-6 w-6">
+                                <X className="h-4 w-4" />
+                            </Button>
+                        )}
+                         {!isPlaylist && onDeleteFromLibrary && (
+                           <Button variant="ghost" size="icon" onClick={() => onDeleteFromLibrary(track)} title="Delete from Library" className="h-6 w-6 text-destructive/70 hover:text-destructive">
+                                <Trash2 className="h-3 w-3" />
+                            </Button>
+                        )}
                         <Button size="sm" variant="outline" onClick={() => onLoadA(track)} className="h-6 px-2 text-xs">A</Button>
                         <Button size="sm" variant="outline" onClick={() => onLoadB(track)} className="h-6 px-2 text-xs">B</Button>
                     </TableCell>
@@ -202,6 +229,8 @@ export default function DashboardPage() {
   const [playlist, setPlaylist] = useState<Track[]>([]);
   const [crossfader, setCrossfader] = useState(-100);
   const [isProcessing, setIsProcessing] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
+  const [trackToDelete, setTrackToDelete] = useState<Track | null>(null);
   const [isDragging, setIsDragging] = useState(false);
   const [fadeSpeed, setFadeSpeed] = useState(2); // seconds
   const [isAutoFadeEnabled, setIsAutoFadeEnabled] = useState(false);
@@ -542,6 +571,45 @@ export default function DashboardPage() {
     }
   };
 
+  const handleRemoveFromPlaylist = (trackId: string) => {
+    setPlaylist(prev => prev.filter(t => t.id !== trackId));
+  };
+  
+  const handleDeleteFromLibrary = async () => {
+    if (!trackToDelete || !user) return;
+
+    setIsDeleting(true);
+    try {
+      // Delete from Storage
+      const fileRef = storageRef(storage, trackToDelete.storagePath);
+      await deleteObject(fileRef);
+
+      // Delete from Firestore
+      const trackDocRef = doc(db, 'users', user.uid, 'tracks', trackToDelete.id);
+      await deleteDoc(trackDocRef);
+
+      // Remove from playlist if it exists there
+      handleRemoveFromPlaylist(trackToDelete.id);
+
+      toast({
+        title: 'Track Deleted',
+        description: `"${trackToDelete.title}" has been removed from your library.`,
+      });
+
+    } catch (error) {
+      console.error("Error deleting track:", error);
+      toast({
+        variant: 'destructive',
+        title: 'Deletion Failed',
+        description: `Could not delete "${trackToDelete.title}". Please try again.`,
+      });
+    } finally {
+      setIsDeleting(false);
+      setTrackToDelete(null);
+    }
+  };
+
+
   return (
     <div className="flex flex-col h-[calc(100vh-8rem)] w-full gap-4">
         {/* Top Section: Players and Mixer */}
@@ -652,6 +720,7 @@ export default function DashboardPage() {
                                 onLoadB={track => loadTrack('B', track)}
                                 onPreview={previewTrack}
                                 onAddToPlaylist={handleAddToPlaylist}
+                                onDeleteFromLibrary={setTrackToDelete}
                             />
                         ) : (
                            <div className="flex items-center justify-center h-full text-muted-foreground text-sm p-4 text-center">
@@ -675,6 +744,7 @@ export default function DashboardPage() {
                                onLoadA={track => loadTrack('A', track)}
                                onLoadB={track => loadTrack('B', track)}
                                onPreview={previewTrack}
+                               onRemoveFromPlaylist={handleRemoveFromPlaylist}
                                isPlaylist={true}
                            />
                        ) : (
@@ -688,9 +758,28 @@ export default function DashboardPage() {
             </Card>
         </div>
 
+        <AlertDialog open={!!trackToDelete} onOpenChange={(open) => !open && setTrackToDelete(null)}>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
+              <AlertDialogDescription>
+                This action cannot be undone. This will permanently delete "{trackToDelete?.title}" from your library and storage.
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel disabled={isDeleting}>Cancel</AlertDialogCancel>
+              <AlertDialogAction onClick={handleDeleteFromLibrary} disabled={isDeleting}>
+                {isDeleting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                Delete
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
+
         <audio ref={audioRefA} onEnded={() => handleTrackEnd('A')} onLoadedMetadata={() => audioRefA.current && (audioRefA.current.currentTime = deckA.startTime)} />
         <audio ref={audioRefB} onEnded={() => handleTrackEnd('B')} onLoadedMetadata={() => audioRefB.current && (audioRefB.current.currentTime = deckB.startTime)} />
         <audio ref={previewAudioRef} />
     </div>
   );
-}
+
+    
