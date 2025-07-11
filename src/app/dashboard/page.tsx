@@ -112,7 +112,7 @@ const PlayerDeck: FC<{
                 <CardTitle className="font-headline text-lg">
                     Deck {deck}
                 </CardTitle>
-                {state.isLive && <Badge variant="destructive" className="animate-pulse">LIVE</Badge>}
+                {state.isLive && <Badge variant="destructive" className="animate-pulse shadow-[0_0_8px_theme(colors.destructive)]">LIVE</Badge>}
             </div>
 
             <div className="space-y-1 h-12">
@@ -241,7 +241,7 @@ export default function DashboardPage() {
   const audioRefB = useRef<HTMLAudioElement>(null);
   const previewAudioRef = useRef<HTMLAudioElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const fadeIntervalRef = useRef<number | null>(null);
+  const fadeIntervalRef = useRef<NodeJS.Timeout | null>(null);
 
   const { user } = useAuth();
   const { toast } = useToast();
@@ -479,7 +479,7 @@ export default function DashboardPage() {
 
   const handleCrossfaderChange = (value: number[]) => {
     if (fadeIntervalRef.current) {
-      cancelAnimationFrame(fadeIntervalRef.current);
+      clearInterval(fadeIntervalRef.current);
       fadeIntervalRef.current = null;
       setIsFading(false);
     }
@@ -489,7 +489,7 @@ export default function DashboardPage() {
   const handleAutoFade = (fadeToDeck: 'A' | 'B') => {
     if (isFading) return;
     if (fadeIntervalRef.current) {
-        cancelAnimationFrame(fadeIntervalRef.current);
+        clearInterval(fadeIntervalRef.current);
     }
     
     setIsFading(true);
@@ -502,26 +502,25 @@ export default function DashboardPage() {
     }
     
     const duration = fadeSpeed * 1000;
-    let startTime: number | null = null;
+    const steps = 50;
+    const stepDuration = duration / steps;
+    const stepValue = (endValue - startValue) / steps;
+    
+    let currentStep = 0;
 
-    const animate = (timestamp: number) => {
-        if (!startTime) startTime = timestamp;
-        const elapsedTime = timestamp - startTime;
-        const progress = Math.min(elapsedTime / duration, 1);
-
-        const currentValue = startValue + (endValue - startValue) * progress;
-        setCrossfader(currentValue);
-
-        if (progress < 1) {
-            fadeIntervalRef.current = requestAnimationFrame(animate);
+    fadeIntervalRef.current = setInterval(() => {
+        if (currentStep < steps) {
+            setCrossfader(prev => prev + stepValue);
+            currentStep++;
         } else {
             setCrossfader(endValue);
             setIsFading(false);
-            fadeIntervalRef.current = null;
+            if (fadeIntervalRef.current) {
+                clearInterval(fadeIntervalRef.current);
+                fadeIntervalRef.current = null;
+            }
         }
-    };
-
-    fadeIntervalRef.current = requestAnimationFrame(animate);
+    }, stepDuration);
   };
   
   const handleStartCrossfade = () => {
