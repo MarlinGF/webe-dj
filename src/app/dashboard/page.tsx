@@ -239,10 +239,17 @@ export default function DashboardPage() {
         });
       });
       setLibraryTracks(tracksData);
+    }, (error) => {
+        console.error("Error fetching tracks:", error);
+        toast({
+            variant: 'destructive',
+            title: 'Error Fetching Tracks',
+            description: 'Could not load your track library. Please try again later.',
+        });
     });
 
     return () => unsubscribe();
-  }, [user]);
+  }, [user, toast]);
 
   // Update audio volumes when faders or crossfader move
   useEffect(() => {
@@ -329,6 +336,11 @@ export default function DashboardPage() {
             });
           } catch (innerError) {
              console.error('Error processing file after upload:', file.name, innerError);
+             toast({
+                variant: 'destructive',
+                title: 'Processing Failed',
+                description: `Could not process ${file.name} after upload.`,
+             });
           }
         }
       );
