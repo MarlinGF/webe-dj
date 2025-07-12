@@ -100,6 +100,11 @@ export default {
         'accordion-down': 'accordion-down 0.2s ease-out',
         'accordion-up': 'accordion-up 0.2s ease-out',
       },
+      boxShadow: {
+        'led-green': '0 0 5px rgba(34, 197, 94, 0.7)',
+        'led-yellow': '0 0 5px rgba(234, 179, 8, 0.7)',
+        'led-red': '0 0 5px rgba(239, 68, 68, 0.7)',
+      }
     },
   },
   plugins: [require('tailwindcss-animate')],

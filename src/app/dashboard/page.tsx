@@ -59,6 +59,7 @@ import {
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
 import { useToast } from '@/hooks/use-toast';
+import { VolumeMeter } from '@/components/VolumeMeter';
 
 export interface Track {
   id: string;
@@ -78,6 +79,7 @@ interface DeckState {
   progress: number;
   currentTime: number;
   startTime: number;
+  analyser: AnalyserNode | null;
 }
 
 const initialDeckState: DeckState = {
@@ -88,6 +90,7 @@ const initialDeckState: DeckState = {
   progress: 0,
   currentTime: 0,
   startTime: 0,
+  analyser: null,
 };
 
 const formatDuration = (seconds: number) => {
@@ -125,6 +128,7 @@ const PlayerDeck: FC<{
                         disabled={!state.track}
                     />
                     <Volume2 className="h-5 w-5 text-muted-foreground" />
+                    <VolumeMeter analyser={state.analyser} isPlaying={state.isPlaying} />
                 </div>
             </div>
 
@@ -244,6 +248,12 @@ export default function DashboardPage() {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const fadeIntervalRef = useRef<NodeJS.Timeout | null>(null);
 
+  const audioContextRef = useRef<AudioContext | null>(null);
+  const sourceRefA = useRef<MediaElementAudioSourceNode | null>(null);
+  const sourceRefB = useRef<MediaElementAudioSourceNode | null>(null);
+  const gainRefA = useRef<GainNode | null>(null);
+  const gainRefB = useRef<GainNode | null>(null);
+
   const { user } = useAuth();
   const { toast } = useToast();
   
@@ -285,21 +295,21 @@ export default function DashboardPage() {
 
   // Update audio volumes when faders or crossfader move
   useEffect(() => {
-    const audioA = audioRefA.current;
-    const audioB = audioRefB.current;
+    const gainA = gainRefA.current;
+    const gainB = gainRefB.current;
 
     const normalizedCrossfader = (crossfader + 100) / 200;
 
-    if (audioA) {
+    if (gainA) {
         const volumeMultiplier = 1 - normalizedCrossfader;
-        audioA.volume = (deckA.volume / 100) * volumeMultiplier;
-        setDeckA(d => ({...d, isLive: d.isPlaying && audioA.volume > 0.01}));
+        gainA.gain.value = (deckA.volume / 100) * volumeMultiplier;
+        setDeckA(d => ({...d, isLive: d.isPlaying && gainA.gain.value > 0.01}));
     }
     
-    if (audioB) {
+    if (gainB) {
         const volumeMultiplier = normalizedCrossfader;
-        audioB.volume = (deckB.volume / 100) * volumeMultiplier;
-        setDeckB(d => ({...d, isLive: d.isPlaying && audioB.volume > 0.01}));
+        gainB.gain.value = (deckB.volume / 100) * volumeMultiplier;
+        setDeckB(d => ({...d, isLive: d.isPlaying && gainB.gain.value > 0.01}));
     }
   }, [deckA.volume, deckB.volume, crossfader, deckA.isPlaying, deckB.isPlaying]);
 
@@ -416,23 +426,60 @@ export default function DashboardPage() {
       e.dataTransfer.clearData();
     }
   };
+  
+  const setupAudioContext = () => {
+    if (!audioContextRef.current) {
+      audioContextRef.current = new (window.AudioContext || (window as any).webkitAudioContext)();
+    }
+  }
 
   const loadTrack = (deck: 'A' | 'B', track: Track) => {
+    setupAudioContext();
+    const audioContext = audioContextRef.current!;
+
     const setDeck = deck === 'A' ? setDeckA : setDeckB;
     const audioRef = deck === 'A' ? audioRefA : audioRefB;
-    
+    const sourceRef = deck === 'A' ? sourceRefA : sourceRefB;
+    const gainRef = deck === 'A' ? gainRefA : gainRefB;
+
     setDeck(prev => {
-        if (prev.isPlaying && audioRef.current) audioRef.current.pause();
-        const newState = { ...initialDeckState, track: track, volume: prev.volume, startTime: 0 };
+        if (prev.isPlaying && audioRef.current) {
+          audioRef.current.pause();
+        }
+
+        // Disconnect old nodes if they exist
+        if (sourceRef.current) {
+            sourceRef.current.disconnect();
+        }
+
+        // Create new nodes
+        const gainNode = audioContext.createGain();
+        const analyserNode = audioContext.createAnalyser();
+        analyserNode.fftSize = 256;
+        
+        gainRef.current = gainNode;
+        
+        const newState = { ...initialDeckState, track: track, volume: prev.volume, startTime: 0, analyser: analyserNode };
+        
         if (audioRef.current) {
             audioRef.current.src = track.url;
             audioRef.current.load();
+
+            if (!sourceRef.current || sourceRef.current.mediaElement !== audioRef.current) {
+              sourceRef.current = audioContext.createMediaElementSource(audioRef.current);
+            }
+            sourceRef.current.connect(analyserNode).connect(gainNode).connect(audioContext.destination);
         }
+        
         return newState;
     });
   };
 
   const togglePlay = (deck: 'A' | 'B') => {
+    if (audioContextRef.current && audioContextRef.current.state === 'suspended') {
+      audioContextRef.current.resume();
+    }
+
     const state = deck === 'A' ? deckA : deckB;
     const setState = deck === 'A' ? setDeckA : setDeckB;
     const audioRef = deck === 'A' ? audioRefA : audioRefB;
@@ -800,8 +847,8 @@ export default function DashboardPage() {
           </AlertDialogContent>
         </AlertDialog>
 
-        <audio ref={audioRefA} onEnded={() => handleTrackEnd('A')} onLoadedMetadata={() => audioRefA.current && (audioRefA.current.currentTime = deckA.startTime)} />
-        <audio ref={audioRefB} onEnded={() => handleTrackEnd('B')} onLoadedMetadata={() => audioRefB.current && (audioRefB.current.currentTime = deckB.startTime)} />
+        <audio ref={audioRefA} onEnded={() => handleTrackEnd('A')} onLoadedMetadata={() => audioRefA.current && (audioRefA.current.currentTime = deckA.startTime)} crossOrigin="anonymous" />
+        <audio ref={audioRefB} onEnded={() => handleTrackEnd('B')} onLoadedMetadata={() => audioRefB.current && (audioRefB.current.currentTime = deckB.startTime)} crossOrigin="anonymous" />
         <audio ref={previewAudioRef} />
     </div>
   );
