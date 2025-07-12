@@ -1,5 +1,6 @@
 
 
+
 'use client';
 
 import { useState, useRef, useEffect, type FC, type ChangeEvent } from 'react';
@@ -60,6 +61,7 @@ import {
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
 import { useToast } from '@/hooks/use-toast';
+import { cn } from '@/lib/utils';
 
 export interface Track {
   id: string;
@@ -97,6 +99,32 @@ const formatDuration = (seconds: number) => {
     return `${minutes}:${secs}`;
 };
 
+const VolumeMeter: FC<{ volume: number, segments?: number }> = ({ volume, segments = 20 }) => {
+  const activeSegments = Math.round((volume / 100) * segments);
+
+  return (
+    <div className="flex w-full h-2 items-center gap-px rounded-full overflow-hidden bg-secondary">
+      {Array.from({ length: segments }).map((_, i) => {
+        const isActive = i < activeSegments;
+        let colorClass = 'bg-muted/50';
+        if (isActive) {
+            const greenThreshold = Math.round(segments * 0.6);
+            const yellowThreshold = Math.round(segments * 0.85);
+            if (i < greenThreshold) {
+                colorClass = 'bg-green-500';
+            } else if (i < yellowThreshold) {
+                colorClass = 'bg-yellow-500';
+            } else {
+                colorClass = 'bg-red-500';
+            }
+        }
+        return <div key={i} className={cn('h-full w-full transition-colors', colorClass)} />;
+      })}
+    </div>
+  );
+};
+
+
 const PlayerDeck: FC<{
     deck: 'A' | 'B';
     state: DeckState;
@@ -122,7 +150,10 @@ const PlayerDeck: FC<{
                       step={1}
                       onValueChange={onVolumeChange}
                       disabled={!state.track}
-                    />
+                      className="group"
+                    >
+                      <VolumeMeter volume={state.volume} />
+                    </Slider>
                     <Volume2 className="h-5 w-5 text-muted-foreground" />
                 </div>
             </div>
