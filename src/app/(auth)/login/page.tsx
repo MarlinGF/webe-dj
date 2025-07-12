@@ -52,7 +52,7 @@ export default function LoginPage() {
     setIsLoading(true);
     try {
       await signInWithEmailAndPassword(auth, values.email, values.password);
-      router.push('/dashboard');
+      router.push('/controls');
     } catch (error: any) {
       toast({
         variant: 'destructive',
@@ -69,7 +69,7 @@ export default function LoginPage() {
     <Card>
       <CardHeader>
         <CardTitle className="font-headline text-2xl">Welcome Back</CardTitle>
-        <CardDescription>Enter your credentials to access your dashboard.</CardDescription>
+        <CardDescription>Enter your credentials to access your studio.</CardDescription>
       </CardHeader>
       <Form {...form}>
         <form onSubmit={form.handleSubmit(onSubmit)}>

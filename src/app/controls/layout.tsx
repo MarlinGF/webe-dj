@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation';
 import { useEffect } from 'react';
 import { MainHeader } from '@/components/main-header';
 
-export default function DashboardLayout({
+export default function ControlsLayout({
   children,
 }: {
   children: React.ReactNode;

@@ -52,7 +52,7 @@ export default function SignUpPage() {
     setIsLoading(true);
     try {
       await createUserWithEmailAndPassword(auth, values.email, values.password);
-      router.push('/dashboard');
+      router.push('/controls');
     } catch (error: any) {
       toast({
         variant: 'destructive',
