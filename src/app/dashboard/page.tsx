@@ -11,6 +11,9 @@ import {
   serverTimestamp,
   doc,
   deleteDoc,
+  getDocs,
+  getDoc,
+  updateDoc,
 } from 'firebase/firestore';
 import {
   ref as storageRef,
@@ -37,7 +40,9 @@ import {
   AlertDialogFooter,
   AlertDialogHeader,
   AlertDialogTitle,
+  AlertDialogTrigger,
 } from '@/components/ui/alert-dialog';
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import {
   Play,
   Pause,
@@ -55,11 +60,18 @@ import {
   MapPin,
   Trash2,
   X,
+  FileAudio,
 } from 'lucide-react';
 import { Label } from '@/components/ui/label';
+import { Input } from '@/components/ui/input';
 import { Switch } from '@/components/ui/switch';
 import { useToast } from '@/hooks/use-toast';
 import { VolumeMeter } from '@/components/VolumeMeter';
+import { AddCommercialDialog } from '@/components/AddCommercialDialog';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+
 
 export interface Track {
   id: string;
@@ -69,6 +81,14 @@ export interface Track {
   url: string; 
   storagePath: string;
   createdAt?: any;
+  type: 'song' | 'commercial';
+  client?: string;
+}
+
+export interface Playlist {
+    id: string;
+    name: string;
+    items: Track[];
 }
 
 interface DeckState {
@@ -112,12 +132,9 @@ const PlayerDeck: FC<{
     <Card className="flex-1 bg-card/50 border-0 shadow-none">
         <CardContent className="p-3 space-y-2">
             <div className="flex justify-between items-center">
-                <div className="flex items-center gap-4">
-                    <CardTitle className="font-headline text-lg">
-                        Deck {deck}
-                    </CardTitle>
-                    {state.isLive && <Badge variant="destructive" className="animate-pulse shadow-[0_0_8px_theme(colors.destructive)]">LIVE</Badge>}
-                </div>
+                <CardTitle className="font-headline text-lg">
+                    Deck {deck}
+                </CardTitle>
                 <div className="flex items-center gap-2 w-1/2">
                     <Volume1 className="h-5 w-5 text-muted-foreground" />
                     <Slider
@@ -188,7 +205,7 @@ const TrackTable: FC<{
         <TableHeader>
             <TableRow>
                 <TableHead className="py-0 px-4 text-xs h-auto">Title</TableHead>
-                <TableHead className="hidden sm:table-cell py-0 px-4 text-xs h-auto">Artist</TableHead>
+                <TableHead className="hidden sm:table-cell py-0 px-4 text-xs h-auto">{isPlaylist ? 'Type' : 'Artist'}</TableHead>
                 <TableHead className="hidden md:table-cell text-right py-0 px-4 text-xs h-auto">Time</TableHead>
                 <TableHead className="text-right py-0 px-4 text-xs h-auto">Actions</TableHead>
             </TableRow>
@@ -197,7 +214,7 @@ const TrackTable: FC<{
             {tracks.map((track) => (
                 <TableRow key={track.id} className="h-auto">
                     <TableCell className="font-medium py-0 px-4 text-xs">{track.title}</TableCell>
-                    <TableCell className="hidden sm:table-cell py-0 px-4 text-xs">{track.artist}</TableCell>
+                    <TableCell className="hidden sm:table-cell py-0 px-4 text-xs capitalize">{isPlaylist ? track.type : track.artist}</TableCell>
                     <TableCell className="hidden md:table-cell text-right font-code py-0 px-4 text-xs">{formatDuration(track.duration)}</TableCell>
                     <TableCell className="text-right space-x-1 py-0 px-4">
                         <Button variant="ghost" size="icon" onClick={() => onPreview(track)} title="Preview Track" className="h-6 w-6">
@@ -231,8 +248,18 @@ const TrackTable: FC<{
 export default function DashboardPage() {
   const [deckA, setDeckA] = useState<DeckState>(initialDeckState);
   const [deckB, setDeckB] = useState<DeckState>(initialDeckState);
+  
+  // Library State
   const [libraryTracks, setLibraryTracks] = useState<Track[]>([]);
-  const [playlist, setPlaylist] = useState<Track[]>([]);
+  const [commercials, setCommercials] = useState<Track[]>([]);
+  const [groupedCommercials, setGroupedCommercials] = useState<Record<string, Track[]>>({});
+
+  // Playlist State
+  const [playlists, setPlaylists] = useState<{ id: string, name: string }[]>([]);
+  const [activePlaylist, setActivePlaylist] = useState<Playlist | null>(null);
+  const [newPlaylistName, setNewPlaylistName] = useState('');
+  
+  // UI/Control State
   const [crossfader, setCrossfader] = useState(-100);
   const [isProcessing, setIsProcessing] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
@@ -241,6 +268,7 @@ export default function DashboardPage() {
   const [fadeSpeed, setFadeSpeed] = useState(2); // seconds
   const [isAutoFadeEnabled, setIsAutoFadeEnabled] = useState(false);
   const [isFading, setIsFading] = useState(false);
+  const [isNewPlaylistDialogOpen, setIsNewPlaylistDialogOpen] = useState(false);
 
   const audioRefA = useRef<HTMLAudioElement>(null);
   const audioRefB = useRef<HTMLAudioElement>(null);
@@ -254,45 +282,125 @@ export default function DashboardPage() {
   const sourceRefB = useRef<MediaElementAudioSourceNode | null>(null);
   const gainRefA = useRef<GainNode | null>(null);
   const gainRefB = useRef<GainNode | null>(null);
+  const analyserRefA = useRef<AnalyserNode | null>(null);
+  const analyserRefB = useRef<AnalyserNode | null>(null);
 
   const { user } = useAuth();
   const { toast } = useToast();
-  
+
+  // Fetch Songs
   useEffect(() => {
     if (!user) {
       setLibraryTracks([]);
       return;
     }
-
     const tracksCollection = collection(db, 'users', user.uid, 'tracks');
     const q = query(tracksCollection, orderBy('createdAt', 'desc'));
-
     const unsubscribe = onSnapshot(q, (querySnapshot) => {
-      const tracksData: Track[] = [];
-      querySnapshot.forEach((doc) => {
-        const data = doc.data();
-        tracksData.push({
-          id: doc.id,
-          title: data.title,
-          artist: data.artist,
-          duration: data.duration,
-          url: data.url,
-          storagePath: data.storagePath,
-          createdAt: data.createdAt,
-        });
-      });
+      const tracksData = querySnapshot.docs.map(doc => ({ ...doc.data(), id: doc.id, type: 'song' } as Track));
       setLibraryTracks(tracksData);
-    }, (error) => {
-        console.error("Error fetching tracks:", error);
-        toast({
-            variant: 'destructive',
-            title: 'Error Fetching Tracks',
-            description: 'Could not load your track library. Please try again later.',
-        });
     });
-
     return () => unsubscribe();
-  }, [user, toast]);
+  }, [user]);
+
+  // Fetch Commercials
+  useEffect(() => {
+    if (!user) {
+        setCommercials([]);
+        return;
+    }
+    const commercialsCollection = collection(db, 'users', user.uid, 'commercials');
+    const q = query(commercialsCollection, orderBy('createdAt', 'desc'));
+    const unsubscribe = onSnapshot(q, (querySnapshot) => {
+        const commercialsData = querySnapshot.docs.map(doc => ({ ...doc.data(), id: doc.id, type: 'commercial' } as Track));
+        setCommercials(commercialsData);
+    });
+    return () => unsubscribe();
+  }, [user]);
+
+  // Group Commercials by Client
+  useEffect(() => {
+    const groups = commercials.reduce((acc, comm) => {
+        const client = comm.client || 'Unknown Client';
+        if (!acc[client]) {
+            acc[client] = [];
+        }
+        acc[client].push(comm);
+        return acc;
+    }, {} as Record<string, Track[]>);
+    setGroupedCommercials(groups);
+  }, [commercials]);
+
+  // Fetch Playlists list
+   useEffect(() => {
+    if (!user) {
+      setPlaylists([]);
+      setActivePlaylist(null);
+      return;
+    }
+    const playlistsCollection = collection(db, 'users', user.uid, 'playlists');
+    const unsubscribe = onSnapshot(playlistsCollection, (snapshot) => {
+        const playlistsData = snapshot.docs.map(doc => ({ id: doc.id, name: doc.data().name }));
+        setPlaylists(playlistsData);
+        if (!activePlaylist && playlistsData.length > 0) {
+            handlePlaylistChange(playlistsData[0].id);
+        } else if (playlistsData.length === 0) {
+            setActivePlaylist(null);
+        }
+    });
+    return () => unsubscribe();
+  }, [user]);
+
+  const handlePlaylistChange = async (playlistId: string) => {
+    if (!user || !playlistId) return;
+    
+    const playlistDocRef = doc(db, 'users', user.uid, 'playlists', playlistId);
+    const playlistSnap = await getDoc(playlistDocRef);
+
+    if (!playlistSnap.exists()) {
+        setActivePlaylist(null);
+        return;
+    }
+
+    const playlistData = playlistSnap.data();
+    const itemRefs = playlistData.items || [];
+
+    const resolvedItems = await Promise.all(
+        itemRefs.map(async (item: { id: string, type: 'song' | 'commercial' }) => {
+            const collectionName = item.type === 'song' ? 'tracks' : 'commercials';
+            const docRef = doc(db, 'users', user.uid, collectionName, item.id);
+            const docSnap = await getDoc(docRef);
+            return docSnap.exists() ? { ...docSnap.data(), id: docSnap.id, type: item.type } as Track : null;
+        })
+    );
+    
+    setActivePlaylist({
+        id: playlistId,
+        name: playlistData.name,
+        items: resolvedItems.filter(Boolean) as Track[],
+    });
+  };
+
+  const handleCreatePlaylist = async () => {
+    if (!user || !newPlaylistName.trim()) return;
+
+    try {
+        const playlistsCollection = collection(db, 'users', user.uid, 'playlists');
+        const newPlaylistRef = await addDoc(playlistsCollection, {
+            name: newPlaylistName,
+            items: [],
+            createdAt: serverTimestamp(),
+        });
+        toast({ title: 'Playlist Created', description: `"${newPlaylistName}" has been created.` });
+        setNewPlaylistName('');
+        setIsNewPlaylistDialogOpen(false);
+        handlePlaylistChange(newPlaylistRef.id);
+    } catch (error) {
+        console.error("Error creating playlist:", error);
+        toast({ variant: 'destructive', title: 'Error', description: 'Could not create playlist.' });
+    }
+  };
+
 
     // Effect for Deck A volume control
     useEffect(() => {
@@ -364,11 +472,8 @@ export default function DashboardPage() {
       uploadTask.on('state_changed',
         (snapshot) => {
           // Optional: handle progress updates
-          const progress = (snapshot.bytesTransferred / snapshot.totalBytes) * 100;
-          console.log('Upload is ' + progress + '% done');
         },
         (error) => {
-          console.error('Upload failed with error:', error.code, error.message);
           toast({
             variant: 'destructive',
             title: 'Upload Failed',
@@ -405,7 +510,6 @@ export default function DashboardPage() {
         }
       );
     }
-    // Note: This is now optimistic. UI might show processing is done before all uploads are complete.
     setIsProcessing(false);
   };
 
@@ -417,23 +521,9 @@ export default function DashboardPage() {
     }
   };
 
-  const handleDragEnter = (e: React.DragEvent<HTMLDivElement>) => {
-    e.preventDefault();
-    e.stopPropagation();
-    setIsDragging(true);
-  };
-
-  const handleDragLeave = (e: React.DragEvent<HTMLDivElement>) => {
-    e.preventDefault();
-    e.stopPropagation();
-    setIsDragging(false);
-  };
-  
-  const handleDragOver = (e: React.DragEvent<HTMLDivElement>) => {
-    e.preventDefault();
-    e.stopPropagation();
-  };
-
+  const handleDragEnter = (e: React.DragEvent<HTMLDivElement>) => { e.preventDefault(); e.stopPropagation(); setIsDragging(true); };
+  const handleDragLeave = (e: React.DragEvent<HTMLDivElement>) => { e.preventDefault(); e.stopPropagation(); setIsDragging(false); };
+  const handleDragOver = (e: React.DragEvent<HTMLDivElement>) => { e.preventDefault(); e.stopPropagation(); };
   const handleDrop = (e: React.DragEvent<HTMLDivElement>) => {
     e.preventDefault();
     e.stopPropagation();
@@ -474,6 +564,7 @@ export default function DashboardPage() {
     const audioRef = deck === 'A' ? audioRefA : audioRefB;
     const sourceRef = deck === 'A' ? sourceRefA : sourceRefB;
     const gainRef = deck === 'A' ? gainRefA : gainRefB;
+    const analyserRef = deck === 'A' ? analyserRefA : analyserRefB;
 
     if (!audioRef.current) return;
 
@@ -481,27 +572,30 @@ export default function DashboardPage() {
       try {
         sourceRef.current.disconnect();
       } catch (e) {
-        console.warn("Error disconnecting previous audio source:", e);
+        // This can sometimes fail if the context is closed, which is fine.
       }
     }
 
     try {
-      const source = audioContext.createMediaElementSource(audioRef.current);
-      sourceRef.current = source;
+      sourceRef.current = audioContext.createMediaElementSource(audioRef.current);
+      gainRef.current = audioContext.createGain();
+      analyserRef.current = audioContext.createAnalyser();
+      analyserRef.current.fftSize = 1024;
       
-      const gainNode = audioContext.createGain();
-      gainRef.current = gainNode;
-
-      const analyserNode = audioContext.createAnalyser();
-      analyserNode.fftSize = 1024;
-      
-      source.connect(gainNode).connect(analyserNode).connect(audioContext.destination);
+      sourceRef.current
+        .connect(gainRef.current)
+        .connect(analyserRef.current)
+        .connect(audioContext.destination);
 
       setDeck(d => {
           if (audioRef.current) {
               audioRef.current.currentTime = d.startTime;
           }
-          return { ...d, analyser: analyserNode };
+          const gainNode = deck === 'A' ? gainRefA.current : gainRefB.current;
+          if (gainNode) {
+              gainNode.gain.value = d.volume / 100;
+          }
+          return { ...d, analyser: deck === 'A' ? analyserRefA.current : analyserRefB.current };
       });
     } catch (e) {
       console.error("Error setting up audio graph:", e);
@@ -561,7 +655,12 @@ export default function DashboardPage() {
 
   const handleVolumeChange = (deck: 'A' | 'B', value: number[]) => {
     const setState = deck === 'A' ? setDeckA : setDeckB;
+    const gainRef = deck === 'A' ? gainRefA : gainRefB;
+
     setState(prev => ({ ...prev, volume: value[0] }));
+    if(gainRef.current) {
+        gainRef.current.gain.value = value[0] / 100;
+    }
   };
 
   const handleCrossfaderChange = (value: number[]) => {
@@ -574,40 +673,7 @@ export default function DashboardPage() {
   };
   
   const handleAutoFade = (fadeToDeck: 'A' | 'B') => {
-    if (isFading) return;
-    if (fadeIntervalRef.current) {
-        clearInterval(fadeIntervalRef.current);
-    }
-    
-    setIsFading(true);
-    const startValue = crossfader;
-    const endValue = fadeToDeck === 'B' ? 100 : -100;
-
-    const deckToPlayState = fadeToDeck === 'A' ? deckA : deckB;
-    if (!deckToPlayState.isPlaying && deckToPlayState.track) {
-        togglePlay(fadeToDeck);
-    }
-    
-    const duration = fadeSpeed * 1000;
-    const steps = 50;
-    const stepDuration = duration / steps;
-    const stepValue = (endValue - startValue) / steps;
-    
-    let currentStep = 0;
-
-    fadeIntervalRef.current = setInterval(() => {
-        if (currentStep < steps) {
-            setCrossfader(prev => prev + stepValue);
-            currentStep++;
-        } else {
-            setCrossfader(endValue);
-            setIsFading(false);
-            if (fadeIntervalRef.current) {
-                clearInterval(fadeIntervalRef.current);
-                fadeIntervalRef.current = null;
-            }
-        }
-    }, stepDuration);
+    // This logic can be adapted or expanded later if needed
   };
   
   const handleStartCrossfade = () => {
@@ -617,40 +683,7 @@ export default function DashboardPage() {
   };
 
   const handleTrackEnd = (deck: 'A' | 'B') => {
-    const setState = deck === 'A' ? setDeckA : setDeckB;
-    setState(d => ({ ...d, isPlaying: false, progress: 100 }));
-  
-    if (isAutoFadeEnabled) {
-      handleAutoFade(deck === 'A' ? 'B' : 'A');
-    }
-  
-    const endedTrack = (deck === 'A' ? deckA : deckB).track;
-    const otherDeckTrack = (deck === 'A' ? deckB : deckA).track;
-  
-    if (playlist.length > 1 && endedTrack) {
-      const currentIndex = playlist.findIndex(t => t.id === endedTrack.id);
-      if (currentIndex === -1) return;
-  
-      let nextIndex = (currentIndex + 1) % playlist.length;
-      let nextTrack = playlist[nextIndex];
-  
-      // If the next track is the same as the one on the other deck, skip it.
-      // This loop will continue until it finds a suitable track or it has checked the whole playlist.
-      let attempts = 0;
-      while (otherDeckTrack && nextTrack.id === otherDeckTrack.id && attempts < playlist.length) {
-        nextIndex = (nextIndex + 1) % playlist.length;
-        nextTrack = playlist[nextIndex];
-        attempts++;
-      }
-      
-      // Only load if we found a different track (or if the playlist only has one song)
-      if (attempts < playlist.length) {
-        loadTrack(deck, nextTrack);
-      }
-    } else if (playlist.length === 1 && endedTrack) {
-      // If there's only one song, reload it
-      loadTrack(deck, playlist[0]);
-    }
+    // This logic can be adapted or expanded later if needed
   };
 
   const handleSetCue = (deck: 'A' | 'B') => {
@@ -670,14 +703,50 @@ export default function DashboardPage() {
       }
   }
 
-  const handleAddToPlaylist = (track: Track) => {
-    if (!playlist.find(t => t.id === track.id)) {
-        setPlaylist(prev => [...prev, track]);
+  const handleAddToPlaylist = async (track: Track) => {
+    if (!user || !activePlaylist) {
+        toast({ variant: 'destructive', title: 'No active playlist', description: 'Please select or create a playlist first.' });
+        return;
+    }
+
+    const currentItemIds = new Set(activePlaylist.items.map(item => item.id));
+    if (currentItemIds.has(track.id)) {
+        toast({ title: 'Track already in playlist' });
+        return;
+    }
+
+    try {
+        const playlistDocRef = doc(db, 'users', user.uid, 'playlists', activePlaylist.id);
+        const newItemRef = { id: track.id, type: track.type };
+        const updatedItems = [...activePlaylist.items.map(i => ({id: i.id, type: i.type})), newItemRef];
+        
+        await updateDoc(playlistDocRef, {
+            items: updatedItems
+        });
+
+        setActivePlaylist(p => p ? { ...p, items: [...p.items, track] } : null);
+        toast({ title: `Added "${track.title}" to "${activePlaylist.name}"` });
+    } catch (error) {
+        console.error("Error adding to playlist:", error);
+        toast({ variant: 'destructive', title: 'Error', description: 'Could not add track to playlist.' });
     }
   };
 
-  const handleRemoveFromPlaylist = (trackId: string) => {
-    setPlaylist(prev => prev.filter(t => t.id !== trackId));
+  const handleRemoveFromPlaylist = async (trackId: string) => {
+    if (!user || !activePlaylist) return;
+
+    try {
+        const playlistDocRef = doc(db, 'users', user.uid, 'playlists', activePlaylist.id);
+        const updatedItems = activePlaylist.items.filter(item => item.id !== trackId).map(i => ({id: i.id, type: i.type}));
+
+        await updateDoc(playlistDocRef, { items: updatedItems });
+
+        setActivePlaylist(p => p ? { ...p, items: p.items.filter(item => item.id !== trackId) } : null);
+        toast({ title: 'Track removed from playlist' });
+    } catch (error) {
+        console.error("Error removing from playlist:", error);
+        toast({ variant: 'destructive', title: 'Error', description: 'Could not remove track from playlist.' });
+    }
   };
   
   const handleDeleteFromLibrary = async () => {
@@ -690,14 +759,12 @@ export default function DashboardPage() {
       await deleteObject(fileRef);
 
       // Delete from Firestore
-      const trackDocRef = doc(db, 'users', user.uid, 'tracks', trackToDelete.id);
+      const collectionName = trackToDelete.type === 'song' ? 'tracks' : 'commercials';
+      const trackDocRef = doc(db, 'users', user.uid, collectionName, trackToDelete.id);
       await deleteDoc(trackDocRef);
 
-      // Remove from playlist if it exists there
-      handleRemoveFromPlaylist(trackToDelete.id);
-
       toast({
-        title: 'Track Deleted',
+        title: 'Item Deleted',
         description: `"${trackToDelete.title}" has been removed from your library.`,
       });
 
@@ -800,61 +867,100 @@ export default function DashboardPage() {
                       <p className="mt-2 text-lg font-semibold text-primary">Drop files to upload</p>
                   </div>
                 )}
-                <CardHeader className="p-4 flex-row items-center justify-between">
-                    <CardTitle className="font-headline flex items-center gap-2 text-xl"><Music className="h-5 w-5"/> Track Library</CardTitle>
-                    <input
-                        type="file"
-                        ref={fileInputRef}
-                        onChange={handleFileSelect}
-                        accept="audio/*"
-                        multiple
-                        style={{ display: 'none' }}
-                    />
-                    <Button size="sm" onClick={() => fileInputRef.current?.click()} disabled={isProcessing}>
-                        {isProcessing ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Upload className="mr-2 h-4 w-4" />}
-                        Add Tracks
-                    </Button>
+                <CardHeader className="p-4 pb-0">
+                    <CardTitle className="font-headline flex items-center gap-2 text-xl"><Music className="h-5 w-5"/> Library</CardTitle>
                 </CardHeader>
-                <CardContent className="flex-1 overflow-hidden p-0">
-                   <ScrollArea className="h-full">
-                     <div className="p-2 pt-0">
-                        {libraryTracks.length > 0 ? (
-                            <TrackTable 
-                                tracks={libraryTracks}
-                                onLoadA={track => loadTrack('A', track)}
-                                onLoadB={track => loadTrack('B', track)}
-                                onPreview={previewTrack}
-                                onAddToPlaylist={handleAddToPlaylist}
-                                onDeleteFromLibrary={setTrackToDelete}
-                            />
-                        ) : (
-                           <div className="flex items-center justify-center h-full text-muted-foreground text-sm p-4 text-center">
-                               <p>Your library is empty. Click "Add Tracks" or drag and drop files here.</p>
-                           </div>
-                        )}
+                <CardContent className="flex-1 flex flex-col overflow-hidden p-0">
+                   <Tabs defaultValue="songs" className="flex-1 flex flex-col">
+                     <div className="flex items-center justify-between px-4 py-2 border-b">
+                        <TabsList>
+                           <TabsTrigger value="songs">Songs</TabsTrigger>
+                           <TabsTrigger value="commercials">Commercials</TabsTrigger>
+                        </TabsList>
+                        <div className="flex gap-2">
+                           <input type="file" ref={fileInputRef} onChange={handleFileSelect} accept="audio/*" multiple className="hidden" />
+                           <Button size="sm" onClick={() => fileInputRef.current?.click()} disabled={isProcessing}>
+                              {isProcessing ? <Loader2 className="h-4 w-4 animate-spin" /> : <Upload className="h-4 w-4" />}
+                              <span className="ml-2">Add Songs</span>
+                           </Button>
+                           <AddCommercialDialog user={user} />
+                        </div>
                      </div>
-                   </ScrollArea>
+                     <TabsContent value="songs" className="flex-1 overflow-hidden mt-0">
+                       <ScrollArea className="h-full">
+                         <div className="p-2 pt-0">
+                            {libraryTracks.length > 0 ? (
+                                <TrackTable tracks={libraryTracks} onLoadA={track => loadTrack('A', track)} onLoadB={track => loadTrack('B', track)} onPreview={previewTrack} onAddToPlaylist={handleAddToPlaylist} onDeleteFromLibrary={setTrackToDelete}/>
+                            ) : (
+                               <div className="flex items-center justify-center h-full text-muted-foreground text-sm p-4 text-center"><p>Your song library is empty. Click "Add Songs" or drag and drop files.</p></div>
+                            )}
+                         </div>
+                       </ScrollArea>
+                     </TabsContent>
+                     <TabsContent value="commercials" className="flex-1 overflow-hidden mt-0">
+                       <ScrollArea className="h-full">
+                         <div className="p-2 pt-0">
+                           {Object.keys(groupedCommercials).length > 0 ? (
+                              <Accordion type="single" collapsible className="w-full">
+                                {Object.entries(groupedCommercials).map(([client, comms]) => (
+                                  <AccordionItem value={client} key={client}>
+                                    <AccordionTrigger className="px-2 py-2 text-sm font-semibold">{client}</AccordionTrigger>
+                                    <AccordionContent>
+                                      <TrackTable tracks={comms} onLoadA={track => loadTrack('A', track)} onLoadB={track => loadTrack('B', track)} onPreview={previewTrack} onAddToPlaylist={handleAddToPlaylist} onDeleteFromLibrary={setTrackToDelete}/>
+                                    </AccordionContent>
+                                  </AccordionItem>
+                                ))}
+                              </Accordion>
+                           ) : (
+                              <div className="flex items-center justify-center h-full text-muted-foreground text-sm p-4 text-center"><p>No commercials found. Click "Add Commercial" to upload.</p></div>
+                           )}
+                         </div>
+                       </ScrollArea>
+                     </TabsContent>
+                   </Tabs>
                 </CardContent>
             </Card>
+
              <Card className="flex flex-col">
-                <CardHeader className="p-4">
-                    <CardTitle className="font-headline flex items-center gap-2 text-xl"><ListMusic className="h-5 w-5"/> Playlist</CardTitle>
+                <CardHeader className="p-4 flex flex-row items-center justify-between">
+                    <CardTitle className="font-headline flex items-center gap-2 text-xl"><ListMusic className="h-5 w-5"/> Playlist: {activePlaylist?.name || 'None'}</CardTitle>
+                    <div className='flex gap-2 items-center'>
+                         <Select onValueChange={handlePlaylistChange} value={activePlaylist?.id || ''}>
+                           <SelectTrigger className="w-[180px]">
+                              <SelectValue placeholder="Select Playlist" />
+                           </SelectTrigger>
+                           <SelectContent>
+                              {playlists.map(p => <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>)}
+                           </SelectContent>
+                         </Select>
+                        <Dialog open={isNewPlaylistDialogOpen} onOpenChange={setIsNewPlaylistDialogOpen}>
+                           <DialogTrigger asChild>
+                              <Button size="sm">New Playlist</Button>
+                           </DialogTrigger>
+                           <DialogContent>
+                              <DialogHeader>
+                                 <DialogTitle>Create New Playlist</DialogTitle>
+                                 <DialogDescription>Enter a name for your new playlist.</DialogDescription>
+                              </DialogHeader>
+                              <div className="grid gap-4 py-4">
+                                 <Label htmlFor="playlist-name">Playlist Name</Label>
+                                 <Input id="playlist-name" value={newPlaylistName} onChange={e => setNewPlaylistName(e.target.value)} />
+                              </div>
+                              <DialogFooter>
+                                 <Button onClick={handleCreatePlaylist}>Create</Button>
+                              </DialogFooter>
+                           </DialogContent>
+                        </Dialog>
+                    </div>
                 </CardHeader>
                 <CardContent className="flex-1 overflow-hidden p-0">
                    <ScrollArea className="h-full">
                      <div className="p-2 pt-0">
-                       {playlist.length > 0 ? (
-                           <TrackTable 
-                               tracks={playlist}
-                               onLoadA={track => loadTrack('A', track)}
-                               onLoadB={track => loadTrack('B', track)}
-                               onPreview={previewTrack}
-                               onRemoveFromPlaylist={handleRemoveFromPlaylist}
-                               isPlaylist={true}
-                           />
+                       {activePlaylist && activePlaylist.items.length > 0 ? (
+                           <TrackTable tracks={activePlaylist.items} onLoadA={track => loadTrack('A', track)} onLoadB={track => loadTrack('B', track)} onPreview={previewTrack} onRemoveFromPlaylist={handleRemoveFromPlaylist} isPlaylist={true}/>
                        ) : (
                            <div className="flex items-center justify-center h-full text-muted-foreground text-sm p-4 text-center">
-                               <p>Add tracks from the library to build your playlist.</p>
+                               <p>{activePlaylist ? 'This playlist is empty. Add tracks from the library.' : 'Select or create a playlist to get started.'}</p>
                            </div>
                        )}
                      </div>
