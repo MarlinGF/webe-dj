@@ -1,9 +1,17 @@
 rules_version = '2';
+
 service firebase.storage {
   match /b/{bucket}/o {
-    // Allow users to manage only their own files
+    // Match any file in the 'users' directory
     match /users/{userId}/{allPaths=**} {
-      allow read, write, delete: if request.auth != null && request.auth.uid == userId;
+      // Allow authenticated users to read and write their own files
+      allow read, write: if request.auth != null && request.auth.uid == userId;
+    }
+
+    // Make all files in any 'tracks' folder publicly readable.
+    // This is necessary for the Web Audio API to work cross-origin.
+    match /users/{userId}/tracks/{trackPath=**} {
+      allow get: if true;
     }
   }
 }
