@@ -289,7 +289,7 @@ export default function DashboardPage() {
   const { toast } = useToast();
   
   const setupAudioContext = () => {
-    if (!audioContextRef.current) {
+    if (typeof window !== 'undefined' && !audioContextRef.current) {
         try {
             audioContextRef.current = new (window.AudioContext || (window as any).webkitAudioContext)();
         } catch (e) {
@@ -402,8 +402,8 @@ export default function DashboardPage() {
         setDeck(d => ({ ...d, progress: isNaN(progress) ? 0 : progress, currentTime: audio.currentTime }));
     };
     
-    const intervalA = setInterval(() => { if (deckA.isPlaying) updateProgress(audioA!, setDeckA) }, 250);
-    const intervalB = setInterval(() => { if (deckB.isPlaying) updateProgress(audioB!, setDeckB) }, 250);
+    const intervalA = setInterval(() => { if (deckA.isPlaying && audioA) updateProgress(audioA, setDeckA) }, 250);
+    const intervalB = setInterval(() => { if (deckB.isPlaying && audioB) updateProgress(audioB, setDeckB) }, 250);
     
     return () => {
         clearInterval(intervalA);
@@ -552,7 +552,7 @@ export default function DashboardPage() {
     const audioRef = deck === 'A' ? audioRefA : audioRefB;
     
     setDeck(prev => {
-        if (prev.isPlaying) audioRef.current?.pause();
+        if (prev.isPlaying && audioRef.current) audioRef.current.pause();
         const newState = { ...initialDeckState, track: track, volume: prev.volume, startTime: 0 };
         if (audioRef.current) {
             audioRef.current.src = track.url;

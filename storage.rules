@@ -1,16 +1,8 @@
 rules_version = '2';
 service firebase.storage {
   match /b/{bucket}/o {
-    // Other user files can only be accessed by the authenticated user
     match /users/{userId}/{allPaths=**} {
       allow read, write: if request.auth != null && request.auth.uid == userId;
-    }
-    
-    // Explicitly allow public read access for files inside any user's 'tracks' directory
-    match /users/{userId}/tracks/{trackName} {
-      allow read;
-      // You can still restrict write access to the owner if needed
-      allow write: if request.auth != null && request.auth.uid == userId;
     }
   }
 }
