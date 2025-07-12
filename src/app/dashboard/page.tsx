@@ -466,9 +466,13 @@ export default function DashboardPage() {
   
   const handleProgressChange = (deck: 'A' | 'B', value: number[]) => {
     const audioRef = deck === 'A' ? audioRefA : audioRefB;
-    if (audioRef.current && audioRef.current.duration) {
-        const newTime = (audioRef.current.duration * value[0]) / 100;
+    const state = deck === 'A' ? deckA : deckB;
+    const setState = deck === 'A' ? setDeckA : setDeckB;
+
+    if (audioRef.current && state.track) {
+        const newTime = (state.track.duration * value[0]) / 100;
         audioRef.current.currentTime = newTime;
+        setState(d => ({...d, progress: value[0], currentTime: newTime}));
     }
   };
 
