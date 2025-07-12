@@ -294,27 +294,23 @@ export default function DashboardPage() {
     return () => unsubscribe();
   }, [user, toast]);
 
-  // Update audio volumes when faders or crossfader move
   useEffect(() => {
-    const gainA = gainRefA.current;
-    const gainB = gainRefB.current;
+      const gainNodeA = gainRefA.current;
+      if (gainNodeA) {
+          const crossfaderValue = Math.cos(((crossfader + 100) / 200) * 0.5 * Math.PI);
+          gainNodeA.gain.value = (deckA.volume / 100) * crossfaderValue;
+          setDeckA(d => ({...d, isLive: d.isPlaying && gainNodeA.gain.value > 0.01}));
+      }
+  }, [deckA.volume, crossfader, deckA.isPlaying]);
 
-    if (!gainA || !gainB) return;
-
-    // Crossfader logic
-    const normalizedCrossfader = (crossfader + 100) / 200;
-    const gainValueA = Math.cos(normalizedCrossfader * 0.5 * Math.PI);
-    const gainValueB = Math.cos((1.0 - normalizedCrossfader) * 0.5 * Math.PI);
-
-    // Apply deck volume
-    gainA.gain.value = (deckA.volume / 100) * gainValueA;
-    gainB.gain.value = (deckB.volume / 100) * gainValueB;
-
-    // Update live status
-    setDeckA(d => ({...d, isLive: d.isPlaying && gainA.gain.value > 0.01}));
-    setDeckB(d => ({...d, isLive: d.isPlaying && gainB.gain.value > 0.01}));
-
-  }, [deckA.volume, deckB.volume, crossfader, deckA.isPlaying, deckB.isPlaying]);
+  useEffect(() => {
+      const gainNodeB = gainRefB.current;
+      if (gainNodeB) {
+          const crossfaderValue = Math.cos((1.0 - ((crossfader + 100) / 200)) * 0.5 * Math.PI);
+          gainNodeB.gain.value = (deckB.volume / 100) * crossfaderValue;
+          setDeckB(d => ({...d, isLive: d.isPlaying && gainNodeB.gain.value > 0.01}));
+      }
+  }, [deckB.volume, crossfader, deckB.isPlaying]);
 
 
   // Update track progress
@@ -876,3 +872,5 @@ export default function DashboardPage() {
     </div>
   );
 }
+
+    
