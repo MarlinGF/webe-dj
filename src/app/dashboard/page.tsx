@@ -114,7 +114,7 @@ const PlayerDeck: FC<{
                     Deck {deck}
                 </CardTitle>
                 {state.isLive && <Badge variant="destructive" className="animate-pulse shadow-[0_0_8px_theme(colors.destructive)]">LIVE</Badge>}
-                <div className="flex items-center gap-2 w-1/3">
+                <div className="flex items-center gap-2 w-1/2">
                     <Volume1 className="h-5 w-5 text-muted-foreground" />
                     <Slider
                       value={[state.volume]}
@@ -804,5 +804,3 @@ export default function DashboardPage() {
     </div>
   );
 }
-
-    
