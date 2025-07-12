@@ -312,6 +312,7 @@ export default function DashboardPage() {
     setDeckB(d => ({...d, isLive: d.isPlaying && gainB.gain.value > 0.01}));
   }, [deckA.volume, deckB.volume, crossfader, deckA.isPlaying, deckB.isPlaying]);
 
+
   // Update track progress
   useEffect(() => {
     const audioA = audioRefA.current;
@@ -865,4 +866,5 @@ export default function DashboardPage() {
         <audio ref={previewAudioRef} />
     </div>
   );
-}
+
+    
