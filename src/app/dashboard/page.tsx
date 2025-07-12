@@ -463,23 +463,28 @@ export default function DashboardPage() {
       sourceRef.current.disconnect();
     }
 
-    const source = audioContext.createMediaElementSource(audioRef.current);
-    sourceRef.current = source;
-    
-    const gainNode = audioContext.createGain();
-    gainRef.current = gainNode;
+    try {
+      const source = audioContext.createMediaElementSource(audioRef.current);
+      sourceRef.current = source;
+      
+      const gainNode = audioContext.createGain();
+      gainRef.current = gainNode;
 
-    const analyserNode = audioContext.createAnalyser();
-    analyserNode.fftSize = 1024;
-    
-    source.connect(analyserNode).connect(gainNode).connect(audioContext.destination);
+      const analyserNode = audioContext.createAnalyser();
+      analyserNode.fftSize = 1024;
+      
+      source.connect(analyserNode).connect(gainNode).connect(audioContext.destination);
 
-    setDeck(d => {
-        if (audioRef.current) {
-            audioRef.current.currentTime = d.startTime;
-        }
-        return { ...d, analyser: analyserNode };
-    });
+      setDeck(d => {
+          if (audioRef.current) {
+              audioRef.current.currentTime = d.startTime;
+          }
+          return { ...d, analyser: analyserNode };
+      });
+    } catch (e) {
+      // This can happen if the audio element is not yet ready, especially with fast reloads.
+      console.error("Error setting up audio graph:", e);
+    }
   }
 
 
