@@ -2,6 +2,7 @@
 
 
 
+
 'use client';
 
 import { useState, useRef, useEffect, type FC, type ChangeEvent } from 'react';
@@ -559,7 +560,6 @@ export default function DashboardPage() {
         const newState = { ...initialDeckState, track: track, volume: prev.volume, startTime: 0 };
         if (audioRef.current) {
             audioRef.current.src = track.url;
-            audioRef.current.crossOrigin = "anonymous";
             audioRef.current.load();
         }
         return newState;
@@ -940,8 +940,8 @@ export default function DashboardPage() {
           </AlertDialogContent>
         </AlertDialog>
 
-        <audio ref={audioRefA} onEnded={() => handleTrackEnd('A')} onLoadedMetadata={() => audioRefA.current && (audioRefA.current.currentTime = deckA.startTime)} />
-        <audio ref={audioRefB} onEnded={() => handleTrackEnd('B')} onLoadedMetadata={() => audioRefB.current && (audioRefB.current.currentTime = deckB.startTime)} />
+        <audio ref={audioRefA} crossOrigin="anonymous" onEnded={() => handleTrackEnd('A')} onLoadedMetadata={() => audioRefA.current && (audioRefA.current.currentTime = deckA.startTime)} />
+        <audio ref={audioRefB} crossOrigin="anonymous" onEnded={() => handleTrackEnd('B')} onLoadedMetadata={() => audioRefB.current && (audioRefB.current.currentTime = deckB.startTime)} />
         <audio ref={previewAudioRef} />
     </div>
   );
