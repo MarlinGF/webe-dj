@@ -301,15 +301,19 @@ export default function DashboardPage() {
 
     if (!gainA || !gainB) return;
 
+    // Crossfader logic
     const normalizedCrossfader = (crossfader + 100) / 200;
+    const gainValueA = Math.cos(normalizedCrossfader * 0.5 * Math.PI);
+    const gainValueB = Math.cos((1.0 - normalizedCrossfader) * 0.5 * Math.PI);
 
-    const volumeMultiplierA = 1 - normalizedCrossfader;
-    gainA.gain.value = (deckA.volume / 100) * volumeMultiplierA;
+    // Apply deck volume
+    gainA.gain.value = (deckA.volume / 100) * gainValueA;
+    gainB.gain.value = (deckB.volume / 100) * gainValueB;
+
+    // Update live status
     setDeckA(d => ({...d, isLive: d.isPlaying && gainA.gain.value > 0.01}));
-    
-    const volumeMultiplierB = normalizedCrossfader;
-    gainB.gain.value = (deckB.volume / 100) * volumeMultiplierB;
     setDeckB(d => ({...d, isLive: d.isPlaying && gainB.gain.value > 0.01}));
+
   }, [deckA.volume, deckB.volume, crossfader, deckA.isPlaying, deckB.isPlaying]);
 
 
@@ -460,8 +464,13 @@ export default function DashboardPage() {
 
     if (!audioRef.current) return;
 
+    // Disconnect previous source if it exists
     if (sourceRef.current) {
-      sourceRef.current.disconnect();
+      try {
+        sourceRef.current.disconnect();
+      } catch (e) {
+        console.warn("Error disconnecting previous audio source:", e);
+      }
     }
 
     try {
@@ -483,7 +492,7 @@ export default function DashboardPage() {
           return { ...d, analyser: analyserNode };
       });
     } catch (e) {
-      // This can happen if the audio element is not yet ready, especially with fast reloads.
+      // This can happen if the audio element is not yet ready, especially with fast reloads or if a source for the element already exists.
       console.error("Error setting up audio graph:", e);
     }
   }
@@ -866,5 +875,4 @@ export default function DashboardPage() {
         <audio ref={previewAudioRef} />
     </div>
   );
-
-    
+}
