@@ -41,6 +41,7 @@ export function VolumeMeter({ analyser, isPlaying }: VolumeMeterProps) {
       let newLevel = 0;
       if (isFinite(db)) {
         const dbClamped = Math.max(MIN_DB, Math.min(db, MAX_DB));
+        // Correctly normalize the value from the range [MIN_DB, MAX_DB] to [0, 1]
         const normalized = (dbClamped - MIN_DB) / (MAX_DB - MIN_DB);
         newLevel = Math.floor(normalized * LED_COUNT);
       }
@@ -68,12 +69,12 @@ export function VolumeMeter({ analyser, isPlaying }: VolumeMeterProps) {
   return (
     <div className="flex flex-col-reverse gap-0.5 items-center">
       {Array.from({ length: LED_COUNT }).map((_, i) => {
-        const ledIndex = i + 1;
-        const isActive = ledIndex <= level;
+        const ledIndex = i; // Use 0-based index
+        const isActive = ledIndex < level;
         const colorClass = isActive
-          ? ledIndex <= 5
+          ? ledIndex < 5
             ? 'bg-green-500 shadow-led-green'
-            : ledIndex <= 8
+            : ledIndex < 8
             ? 'bg-yellow-500 shadow-led-yellow'
             : 'bg-red-500 shadow-led-red'
           : 'bg-gray-700/50';
