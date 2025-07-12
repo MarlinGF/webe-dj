@@ -294,6 +294,23 @@ export default function DashboardPage() {
     return () => unsubscribe();
   }, [user, toast]);
 
+    // Effect for Deck A volume control
+    useEffect(() => {
+        const gainNode = gainRefA.current;
+        if (gainNode) {
+            gainNode.gain.value = deckA.volume / 100;
+        }
+    }, [deckA.volume]);
+
+    // Effect for Deck B volume control
+    useEffect(() => {
+        const gainNode = gainRefB.current;
+        if (gainNode) {
+            gainNode.gain.value = deckB.volume / 100;
+        }
+    }, [deckB.volume]);
+
+
   useEffect(() => {
       const gainNodeA = gainRefA.current;
       if (gainNodeA) {
@@ -442,7 +459,7 @@ export default function DashboardPage() {
         if (prev.isPlaying && audioRef.current) {
           audioRef.current.pause();
         }
-        return { ...initialDeckState, track: track, volume: prev.volume, startTime: 0, analyser: null };
+        return { ...initialDeckState, track: track, volume: prev.volume, startTime: 0, analyser: prev.analyser };
     });
     
     if (audioRef.current) {
@@ -460,7 +477,6 @@ export default function DashboardPage() {
 
     if (!audioRef.current) return;
 
-    // Disconnect previous source if it exists
     if (sourceRef.current) {
       try {
         sourceRef.current.disconnect();
@@ -479,7 +495,7 @@ export default function DashboardPage() {
       const analyserNode = audioContext.createAnalyser();
       analyserNode.fftSize = 1024;
       
-      source.connect(analyserNode).connect(gainNode).connect(audioContext.destination);
+      source.connect(gainNode).connect(analyserNode).connect(audioContext.destination);
 
       setDeck(d => {
           if (audioRef.current) {
@@ -488,7 +504,6 @@ export default function DashboardPage() {
           return { ...d, analyser: analyserNode };
       });
     } catch (e) {
-      // This can happen if the audio element is not yet ready, especially with fast reloads or if a source for the element already exists.
       console.error("Error setting up audio graph:", e);
     }
   }
@@ -872,5 +887,3 @@ export default function DashboardPage() {
     </div>
   );
 }
-
-    
