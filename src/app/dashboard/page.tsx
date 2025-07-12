@@ -109,10 +109,23 @@ const PlayerDeck: FC<{
     <Card className="flex-1 bg-card/50 border-0 shadow-none">
         <CardContent className="p-3 space-y-2">
             <div className="flex justify-between items-center">
-                <CardTitle className="font-headline text-lg">
-                    Deck {deck}
-                </CardTitle>
-                {state.isLive && <Badge variant="destructive" className="animate-pulse shadow-[0_0_8px_theme(colors.destructive)]">LIVE</Badge>}
+                <div className="flex items-center gap-4">
+                    <CardTitle className="font-headline text-lg">
+                        Deck {deck}
+                    </CardTitle>
+                    {state.isLive && <Badge variant="destructive" className="animate-pulse shadow-[0_0_8px_theme(colors.destructive)]">LIVE</Badge>}
+                </div>
+                <div className="flex items-center gap-2 w-1/2">
+                    <Volume1 className="h-5 w-5 text-muted-foreground" />
+                    <Slider
+                        value={[state.volume]}
+                        max={100}
+                        step={1}
+                        onValueChange={onVolumeChange}
+                        disabled={!state.track}
+                    />
+                    <Volume2 className="h-5 w-5 text-muted-foreground" />
+                </div>
             </div>
 
             <div className="space-y-1 h-12">
@@ -133,7 +146,7 @@ const PlayerDeck: FC<{
                     <p className="text-xs font-code">{formatDuration(state.track?.duration ?? 0)}</p>
                 </div>
 
-                <div className="flex items-center justify-between">
+                <div className="flex items-center justify-start">
                     <div className="flex items-center gap-1">
                          <Button size="icon" variant="ghost" onClick={() => onSeek(-5)} disabled={!state.track} className="h-8 w-8">
                             <Rewind className="h-5 w-5" />
@@ -150,17 +163,6 @@ const PlayerDeck: FC<{
                         <Button size="icon" variant="ghost" onClick={onSetCue} disabled={!state.track} className="h-8 w-8" title="Set Cue Point">
                             <MapPin className="h-5 w-5" />
                         </Button>
-                    </div>
-                     <div className="flex items-center gap-2 w-1/3">
-                        <Volume1 className="h-5 w-5 text-muted-foreground" />
-                        <Slider
-                            value={[state.volume]}
-                            max={100}
-                            step={1}
-                            onValueChange={onVolumeChange}
-                            disabled={!state.track}
-                        />
-                        <Volume2 className="h-5 w-5 text-muted-foreground" />
                     </div>
                 </div>
             </div>
