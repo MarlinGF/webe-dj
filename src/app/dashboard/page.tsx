@@ -249,6 +249,7 @@ export default function DashboardPage() {
   const fadeIntervalRef = useRef<NodeJS.Timeout | null>(null);
 
   const audioContextRef = useRef<AudioContext | null>(null);
+  
   const sourceRefA = useRef<MediaElementAudioSourceNode | null>(null);
   const sourceRefB = useRef<MediaElementAudioSourceNode | null>(null);
   const gainRefA = useRef<GainNode | null>(null);
@@ -298,19 +299,17 @@ export default function DashboardPage() {
     const gainA = gainRefA.current;
     const gainB = gainRefB.current;
 
+    if (!gainA || !gainB) return;
+
     const normalizedCrossfader = (crossfader + 100) / 200;
 
-    if (gainA) {
-        const volumeMultiplier = 1 - normalizedCrossfader;
-        gainA.gain.value = (deckA.volume / 100) * volumeMultiplier;
-        setDeckA(d => ({...d, isLive: d.isPlaying && gainA.gain.value > 0.01}));
-    }
+    const volumeMultiplierA = 1 - normalizedCrossfader;
+    gainA.gain.value = (deckA.volume / 100) * volumeMultiplierA;
+    setDeckA(d => ({...d, isLive: d.isPlaying && gainA.gain.value > 0.01}));
     
-    if (gainB) {
-        const volumeMultiplier = normalizedCrossfader;
-        gainB.gain.value = (deckB.volume / 100) * volumeMultiplier;
-        setDeckB(d => ({...d, isLive: d.isPlaying && gainB.gain.value > 0.01}));
-    }
+    const volumeMultiplierB = normalizedCrossfader;
+    gainB.gain.value = (deckB.volume / 100) * volumeMultiplierB;
+    setDeckB(d => ({...d, isLive: d.isPlaying && gainB.gain.value > 0.01}));
   }, [deckA.volume, deckB.volume, crossfader, deckA.isPlaying, deckB.isPlaying]);
 
   // Update track progress
@@ -431,49 +430,58 @@ export default function DashboardPage() {
     if (!audioContextRef.current) {
       audioContextRef.current = new (window.AudioContext || (window as any).webkitAudioContext)();
     }
+    return audioContextRef.current;
   }
 
   const loadTrack = (deck: 'A' | 'B', track: Track) => {
-    setupAudioContext();
-    const audioContext = audioContextRef.current!;
-
+    const setDeck = deck === 'A' ? setDeckA : setDeckB;
+    const audioRef = deck === 'A' ? audioRefA : audioRefB;
+    
+    setDeck(prev => {
+        if (prev.isPlaying && audioRef.current) {
+          audioRef.current.pause();
+        }
+        return { ...initialDeckState, track: track, volume: prev.volume, startTime: 0, analyser: null };
+    });
+    
+    if (audioRef.current) {
+        audioRef.current.src = track.url;
+        audioRef.current.load();
+    }
+  };
+  
+  const handleMetadataLoaded = (deck: 'A' | 'B') => {
+    const audioContext = setupAudioContext();
     const setDeck = deck === 'A' ? setDeckA : setDeckB;
     const audioRef = deck === 'A' ? audioRefA : audioRefB;
     const sourceRef = deck === 'A' ? sourceRefA : sourceRefB;
     const gainRef = deck === 'A' ? gainRefA : gainRefB;
 
-    setDeck(prev => {
-        if (prev.isPlaying && audioRef.current) {
-          audioRef.current.pause();
-        }
+    if (!audioRef.current) return;
 
-        // Disconnect old nodes if they exist
-        if (sourceRef.current) {
-            sourceRef.current.disconnect();
-        }
+    if (sourceRef.current) {
+      sourceRef.current.disconnect();
+    }
 
-        // Create new nodes
-        const gainNode = audioContext.createGain();
-        const analyserNode = audioContext.createAnalyser();
-        analyserNode.fftSize = 1024;
-        
-        gainRef.current = gainNode;
-        
-        const newState = { ...initialDeckState, track: track, volume: prev.volume, startTime: 0, analyser: analyserNode };
-        
+    const source = audioContext.createMediaElementSource(audioRef.current);
+    sourceRef.current = source;
+    
+    const gainNode = audioContext.createGain();
+    gainRef.current = gainNode;
+
+    const analyserNode = audioContext.createAnalyser();
+    analyserNode.fftSize = 1024;
+    
+    source.connect(analyserNode).connect(gainNode).connect(audioContext.destination);
+
+    setDeck(d => {
         if (audioRef.current) {
-            audioRef.current.src = track.url;
-            audioRef.current.load();
-
-            if (!sourceRef.current || sourceRef.current.mediaElement !== audioRef.current) {
-              sourceRef.current = audioContext.createMediaElementSource(audioRef.current);
-            }
-            sourceRef.current.connect(analyserNode).connect(gainNode).connect(audioContext.destination);
+            audioRef.current.currentTime = d.startTime;
         }
-        
-        return newState;
+        return { ...d, analyser: analyserNode };
     });
-  };
+  }
+
 
   const togglePlay = (deck: 'A' | 'B') => {
     if (audioContextRef.current && audioContextRef.current.state === 'suspended') {
@@ -847,8 +855,8 @@ export default function DashboardPage() {
           </AlertDialogContent>
         </AlertDialog>
 
-        <audio ref={audioRefA} onEnded={() => handleTrackEnd('A')} onLoadedMetadata={() => audioRefA.current && (audioRefA.current.currentTime = deckA.startTime)} crossOrigin="anonymous" />
-        <audio ref={audioRefB} onEnded={() => handleTrackEnd('B')} onLoadedMetadata={() => audioRefB.current && (audioRefB.current.currentTime = deckB.startTime)} crossOrigin="anonymous" />
+        <audio ref={audioRefA} onEnded={() => handleTrackEnd('A')} onLoadedMetadata={() => handleMetadataLoaded('A')} crossOrigin="anonymous" />
+        <audio ref={audioRefB} onEnded={() => handleTrackEnd('B')} onLoadedMetadata={() => handleMetadataLoaded('B')} crossOrigin="anonymous" />
         <audio ref={previewAudioRef} />
     </div>
   );
