@@ -1,6 +1,7 @@
 
 
 
+
 'use client';
 
 import { useState, useRef, useEffect, type FC, type ChangeEvent } from 'react';
@@ -76,6 +77,7 @@ export interface Track {
 interface DeckState {
   track: Track | null;
   volume: number;
+  liveVolume: number;
   isPlaying: boolean;
   isLive: boolean;
   progress: number;
@@ -86,6 +88,7 @@ interface DeckState {
 const initialDeckState: DeckState = {
   track: null,
   volume: 80,
+  liveVolume: 0,
   isPlaying: false,
   isLive: false,
   progress: 0,
@@ -152,7 +155,7 @@ const PlayerDeck: FC<{
                       disabled={!state.track}
                       className="group"
                     >
-                      <VolumeMeter volume={state.volume} />
+                      <VolumeMeter volume={state.liveVolume} />
                     </Slider>
                     <Volume2 className="h-5 w-5 text-muted-foreground" />
                 </div>
@@ -273,10 +276,60 @@ export default function DashboardPage() {
   const previewAudioRef = useRef<HTMLAudioElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const fadeIntervalRef = useRef<NodeJS.Timeout | null>(null);
+  
+  const audioContextRef = useRef<AudioContext | null>(null);
+  const audioSourceNodeA = useRef<MediaElementAudioSourceNode | null>(null);
+  const audioSourceNodeB = useRef<MediaElementAudioSourceNode | null>(null);
+  const gainNodeA = useRef<GainNode | null>(null);
+  const gainNodeB = useRef<GainNode | null>(null);
+  const analyserNodeA = useRef<AnalyserNode | null>(null);
+  const analyserNodeB = useRef<AnalyserNode | null>(null);
+  const animationFrameRefA = useRef<number | null>(null);
+  const animationFrameRefB = useRef<number | null>(null);
+
 
   const { user } = useAuth();
   const { toast } = useToast();
   
+  const setupAudioContext = () => {
+    if (!audioContextRef.current) {
+        try {
+            audioContextRef.current = new (window.AudioContext || (window as any).webkitAudioContext)();
+        } catch (e) {
+            console.error("Web Audio API is not supported in this browser", e);
+            toast({
+                variant: 'destructive',
+                title: 'Browser Not Supported',
+                description: 'The Web Audio API is required for audio analysis. Please use a modern browser.',
+            });
+        }
+    }
+    return audioContextRef.current;
+  };
+  
+  const setupDeckAudioGraph = (deck: 'A' | 'B') => {
+    const audioCtx = setupAudioContext();
+    if (!audioCtx) return;
+
+    const audioRef = deck === 'A' ? audioRefA : audioRefB;
+    const sourceNodeRef = deck === 'A' ? audioSourceNodeA : audioSourceNodeB;
+    const gainNodeRef = deck === 'A' ? gainNodeA : gainNodeB;
+    const analyserNodeRef = deck === 'A' ? analyserNodeA : analyserNodeB;
+
+    if (audioRef.current && !sourceNodeRef.current) {
+      sourceNodeRef.current = audioCtx.createMediaElementSource(audioRef.current);
+      gainNodeRef.current = audioCtx.createGain();
+      analyserNodeRef.current = audioCtx.createAnalyser();
+
+      analyserNodeRef.current.fftSize = 256;
+      
+      sourceNodeRef.current.connect(gainNodeRef.current);
+      gainNodeRef.current.connect(analyserNodeRef.current);
+      analyserNodeRef.current.connect(audioCtx.destination);
+    }
+  };
+
+
   useEffect(() => {
     if (!user) {
       setLibraryTracks([]);
@@ -315,21 +368,29 @@ export default function DashboardPage() {
 
   // Update audio volumes when faders or crossfader move
   useEffect(() => {
-    const audioA = audioRefA.current;
-    const audioB = audioRefB.current;
+    const gainA = gainNodeA.current;
+    const gainB = gainNodeB.current;
 
     const normalizedCrossfader = (crossfader + 100) / 200;
 
-    if (audioA) {
+    if (gainA) {
         const volumeMultiplier = 1 - normalizedCrossfader;
-        audioA.volume = (deckA.volume / 100) * volumeMultiplier;
-        setDeckA(d => ({...d, isLive: d.isPlaying && audioA.volume > 0.01}));
+        gainA.gain.value = (deckA.volume / 100) * volumeMultiplier;
+        setDeckA(d => ({...d, isLive: d.isPlaying && gainA.gain.value > 0.01}));
+    } else if (audioRefA.current) { // Fallback for browsers without Web Audio API
+        const volumeMultiplier = 1 - normalizedCrossfader;
+        audioRefA.current.volume = (deckA.volume / 100) * volumeMultiplier;
+        setDeckA(d => ({...d, isLive: d.isPlaying && audioRefA.current!.volume > 0.01}));
     }
     
-    if (audioB) {
+    if (gainB) {
         const volumeMultiplier = normalizedCrossfader;
-        audioB.volume = (deckB.volume / 100) * volumeMultiplier;
-        setDeckB(d => ({...d, isLive: d.isPlaying && audioB.volume > 0.01}));
+        gainB.gain.value = (deckB.volume / 100) * volumeMultiplier;
+        setDeckB(d => ({...d, isLive: d.isPlaying && gainB.gain.value > 0.01}));
+    } else if (audioRefB.current) { // Fallback
+        const volumeMultiplier = normalizedCrossfader;
+        audioRefB.current.volume = (deckB.volume / 100) * volumeMultiplier;
+        setDeckB(d => ({...d, isLive: d.isPlaying && audioRefB.current!.volume > 0.01}));
     }
   }, [deckA.volume, deckB.volume, crossfader, deckA.isPlaying, deckB.isPlaying]);
 
@@ -350,6 +411,49 @@ export default function DashboardPage() {
     return () => {
         clearInterval(intervalA);
         clearInterval(intervalB);
+    };
+  }, [deckA.isPlaying, deckB.isPlaying]);
+
+    // Volume analysis loop
+  useEffect(() => {
+    const runVolumeAnalysis = (analyserNode: AnalyserNode, setDeck: React.Dispatch<React.SetStateAction<DeckState>>, animationFrameRef: React.MutableRefObject<number | null>) => {
+        if (!analyserNode) return;
+        const bufferLength = analyserNode.frequencyBinCount;
+        const dataArray = new Uint8Array(bufferLength);
+        
+        const update = () => {
+            analyserNode.getByteTimeDomainData(dataArray);
+            let sumSquares = 0.0;
+            for (const amplitude of dataArray) {
+                const normalizedAmplitude = (amplitude / 128.0) - 1.0;
+                sumSquares += normalizedAmplitude * normalizedAmplitude;
+            }
+            const rms = Math.sqrt(sumSquares / bufferLength);
+            const volume = Math.min(100, rms * 300); // Scale factor, adjust as needed
+
+            setDeck(d => ({ ...d, liveVolume: volume }));
+            animationFrameRef.current = requestAnimationFrame(update);
+        };
+        update();
+    };
+
+    if (deckA.isPlaying && analyserNodeA.current) {
+        runVolumeAnalysis(analyserNodeA.current, setDeckA, animationFrameRefA);
+    } else {
+        if (animationFrameRefA.current) cancelAnimationFrame(animationFrameRefA.current);
+        setDeckA(d => ({...d, liveVolume: 0}));
+    }
+
+    if (deckB.isPlaying && analyserNodeB.current) {
+        runVolumeAnalysis(analyserNodeB.current, setDeckB, animationFrameRefB);
+    } else {
+        if (animationFrameRefB.current) cancelAnimationFrame(animationFrameRefB.current);
+        setDeckB(d => ({...d, liveVolume: 0}));
+    }
+
+    return () => {
+        if (animationFrameRefA.current) cancelAnimationFrame(animationFrameRefA.current);
+        if (animationFrameRefB.current) cancelAnimationFrame(animationFrameRefB.current);
     };
   }, [deckA.isPlaying, deckB.isPlaying]);
 
@@ -455,6 +559,7 @@ export default function DashboardPage() {
         const newState = { ...initialDeckState, track: track, volume: prev.volume, startTime: 0 };
         if (audioRef.current) {
             audioRef.current.src = track.url;
+            audioRef.current.crossOrigin = "anonymous";
             audioRef.current.load();
         }
         return newState;
@@ -467,6 +572,12 @@ export default function DashboardPage() {
     const audioRef = deck === 'A' ? audioRefA : audioRefB;
 
     if (!state.track || !audioRef.current) return;
+    
+    const audioCtx = setupAudioContext();
+    if(audioCtx && audioCtx.state === 'suspended') {
+      audioCtx.resume();
+    }
+    setupDeckAudioGraph(deck);
 
     if (state.isPlaying) {
       audioRef.current.pause();
