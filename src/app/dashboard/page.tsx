@@ -455,7 +455,7 @@ export default function DashboardPage() {
         // Create new nodes
         const gainNode = audioContext.createGain();
         const analyserNode = audioContext.createAnalyser();
-        analyserNode.fftSize = 256;
+        analyserNode.fftSize = 1024;
         
         gainRef.current = gainNode;
         

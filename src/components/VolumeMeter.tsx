@@ -10,7 +10,7 @@ interface VolumeMeterProps {
 }
 
 const LED_COUNT = 10;
-const MIN_DB = -60;
+const MIN_DB = -80;
 const MAX_DB = 0;
 
 export function VolumeMeter({ analyser, isPlaying }: VolumeMeterProps) {
@@ -26,28 +26,29 @@ export function VolumeMeter({ analyser, isPlaying }: VolumeMeterProps) {
       return;
     }
 
-    const dataArray = new Uint8Array(analyser.frequencyBinCount);
+    const dataArray = new Float32Array(analyser.fftSize);
 
     const animate = () => {
-      analyser.getByteFrequencyData(dataArray);
+      analyser.getFloatTimeDomainData(dataArray);
       
-      let sum = 0;
-      for (let i = 0; i < dataArray.length; i++) {
-        sum += dataArray[i] * dataArray[i];
+      let sumSquares = 0.0;
+      for (const amplitude of dataArray) {
+        sumSquares += amplitude * amplitude;
       }
-      const rms = Math.sqrt(sum / dataArray.length);
-      const db = 20 * Math.log10(rms / 255);
+      const rms = Math.sqrt(sumSquares / dataArray.length) || 0;
+      const db = rms > 0 ? 20 * Math.log10(rms) : -Infinity;
       
       let newLevel = 0;
       if (isFinite(db)) {
         const dbClamped = Math.max(MIN_DB, Math.min(db, MAX_DB));
-        newLevel = Math.floor(((dbClamped - MIN_DB) / (MAX_DB - MIN_DB)) * (LED_COUNT + 1));
+        const normalized = (dbClamped - MIN_DB) / (MAX_DB - MIN_DB);
+        newLevel = Math.floor(normalized * LED_COUNT);
       }
       
       setLevel(currentLevel => {
         // Smoothly fall back down
         if (newLevel < currentLevel) {
-          return Math.max(newLevel, currentLevel - 1);
+          return Math.max(newLevel, currentLevel - 0.5); // Slower decay
         }
         return newLevel;
       });
