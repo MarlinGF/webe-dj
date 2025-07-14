@@ -663,7 +663,31 @@ export default function ControlsPage() {
   };
   
   const handleAutoFade = (fadeToDeck: 'A' | 'B') => {
-    // This logic can be adapted or expanded later if needed
+    if (isFading) return;
+    setIsFading(true);
+  
+    const startValue = crossfader;
+    const endValue = fadeToDeck === 'B' ? 100 : -100;
+    const duration = fadeSpeed * 1000;
+    const intervalTime = 50; // ms per step
+    const totalSteps = duration / intervalTime;
+    const stepValue = (endValue - startValue) / totalSteps;
+  
+    let currentStep = 0;
+  
+    fadeIntervalRef.current = setInterval(() => {
+      currentStep++;
+      if (currentStep >= totalSteps) {
+        setCrossfader(endValue);
+        if (fadeIntervalRef.current) {
+          clearInterval(fadeIntervalRef.current);
+          fadeIntervalRef.current = null;
+        }
+        setIsFading(false);
+      } else {
+        setCrossfader(prev => prev + stepValue);
+      }
+    }, intervalTime);
   };
   
   const handleStartCrossfade = () => {
