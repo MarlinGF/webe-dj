@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState, useRef, useEffect, type FC, type ChangeEvent } from 'react';
@@ -664,8 +665,14 @@ export default function ControlsPage() {
   
   const handleAutoFade = (fadeToDeck: 'A' | 'B') => {
     if (isFading) return;
-    setIsFading(true);
   
+    // Start playing the target deck if it's loaded and not playing
+    const targetState = fadeToDeck === 'A' ? deckA : deckB;
+    if (targetState.track && !targetState.isPlaying) {
+      togglePlay(fadeToDeck);
+    }
+
+    setIsFading(true);
     const startValue = crossfader;
     const endValue = fadeToDeck === 'B' ? 100 : -100;
     const duration = fadeSpeed * 1000;
