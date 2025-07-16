@@ -675,15 +675,12 @@ export default function ControlsPage() {
     
     if (currentTrackIndex === -1) {
       console.log('Could not find current track in playlist. Defaulting to first available.');
-      // Fallback: just find a track that isn't on the other deck.
       return activePlaylist.items.find(t => t.id !== otherDeckTrackId) || null;
     }
     
-    // Loop through the playlist starting from the track after the current one
     for (let i = 1; i < activePlaylist.items.length; i++) {
         const nextIndex = (currentTrackIndex + i) % activePlaylist.items.length;
         const potentialTrack = activePlaylist.items[nextIndex];
-        // The next track cannot be what's on the other deck
         if (potentialTrack.id !== otherDeckTrackId) {
             console.log('Next track found:', potentialTrack.title);
             return potentialTrack;
@@ -698,25 +695,29 @@ export default function ControlsPage() {
     if (isFading) return;
   
     const targetDeck = sourceDeck === 'A' ? 'B' : 'A';
-    const targetState = targetDeck === 'A' ? deckA : deckB;
-    const sourceState = sourceDeck === 'A' ? deckA : deckB;
     
-    if (targetState.track && !targetState.isPlaying) {
-      console.log(`Auto-fade: Starting playback on Deck ${targetDeck}`);
-      togglePlay(targetDeck);
-    }
-
     setIsFading(true);
     const startValue = crossfader;
     const endValue = targetDeck === 'B' ? 100 : -100;
     const duration = fadeSpeed * 1000;
-    const intervalTime = 50; // ms per step
+    const intervalTime = 50;
     const totalSteps = duration / intervalTime;
     const stepValue = (endValue - startValue) / totalSteps;
   
     let currentStep = 0;
   
     fadeIntervalRef.current = setInterval(() => {
+      // Re-evaluate deck states inside the interval to get the latest values
+      const currentDeckA = deckA;
+      const currentDeckB = deckB;
+      const targetState = targetDeck === 'A' ? currentDeckA : currentDeckB;
+
+      // FIX: Check if target deck is ready and start playback
+      if (targetState.track && !targetState.isPlaying) {
+          console.log(`Auto-fade: Starting playback on Deck ${targetDeck}`);
+          togglePlay(targetDeck);
+      }
+
       currentStep++;
       if (currentStep >= totalSteps) {
         setCrossfader(endValue);
@@ -727,7 +728,9 @@ export default function ControlsPage() {
         setIsFading(false);
         console.log(`Auto-fade to Deck ${targetDeck} complete.`);
         
-        const otherDeckTrackId = targetState.track?.id;
+        const sourceState = sourceDeck === 'A' ? currentDeckA : currentDeckB;
+        const otherDeckTrackId = (targetDeck === 'A' ? currentDeckA : currentDeckB).track?.id;
+        
         const nextTrack = findNextTrack(sourceState.track?.id, otherDeckTrackId);
         
         if (nextTrack) {
@@ -756,7 +759,6 @@ export default function ControlsPage() {
     if (isAutoFadeEnabled) {
       handleAutoFade(endedDeck);
     } else {
-      // Just stop the deck if auto-fade is off
       handleStop(endedDeck);
     }
   };
@@ -1068,4 +1070,3 @@ export default function ControlsPage() {
     </div>
   );
 }
-
