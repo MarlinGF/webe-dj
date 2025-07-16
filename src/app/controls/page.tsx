@@ -666,10 +666,13 @@ export default function ControlsPage() {
   };
   
   const findNextTrack = (currentTrackId?: string, otherDeckTrackId?: string) => {
-    if (!activePlaylist || activePlaylist.items.length < 2) {
-        console.log('Not enough tracks in playlist to find next.');
+    if (!activePlaylist || activePlaylist.items.length < 1) {
+        console.log('Playlist is empty or has only one track.');
         return null;
     }
+    
+    // If only one track, it can't be "next"
+    if (activePlaylist.items.length === 1) return null;
 
     const currentTrackIndex = activePlaylist.items.findIndex(t => t.id === currentTrackId);
     
@@ -678,6 +681,7 @@ export default function ControlsPage() {
       return activePlaylist.items.find(t => t.id !== otherDeckTrackId) || null;
     }
     
+    // Loop through playlist starting from the next track to find a suitable one
     for (let i = 1; i < activePlaylist.items.length; i++) {
         const nextIndex = (currentTrackIndex + i) % activePlaylist.items.length;
         const potentialTrack = activePlaylist.items[nextIndex];
@@ -695,7 +699,18 @@ export default function ControlsPage() {
     if (isFading) return;
   
     const targetDeck = sourceDeck === 'A' ? 'B' : 'A';
-    
+    const sourceState = sourceDeck === 'A' ? deckA : deckB;
+    const targetState = targetDeck === 'A' ? deckA : deckB;
+
+    if (!targetState.track) {
+      console.log(`Auto-fade cancelled: Target deck ${targetDeck} has no track.`);
+      handleStop(sourceDeck); // Stop the finished deck
+      return;
+    }
+
+    // Immediately start the target deck
+    togglePlay(targetDeck);
+
     setIsFading(true);
     const startValue = crossfader;
     const endValue = targetDeck === 'B' ? 100 : -100;
@@ -707,17 +722,6 @@ export default function ControlsPage() {
     let currentStep = 0;
   
     fadeIntervalRef.current = setInterval(() => {
-      // Re-evaluate deck states inside the interval to get the latest values
-      const currentDeckA = deckA;
-      const currentDeckB = deckB;
-      const targetState = targetDeck === 'A' ? currentDeckA : currentDeckB;
-
-      // FIX: Check if target deck is ready and start playback
-      if (targetState.track && !targetState.isPlaying) {
-          console.log(`Auto-fade: Starting playback on Deck ${targetDeck}`);
-          togglePlay(targetDeck);
-      }
-
       currentStep++;
       if (currentStep >= totalSteps) {
         setCrossfader(endValue);
@@ -728,20 +732,16 @@ export default function ControlsPage() {
         setIsFading(false);
         console.log(`Auto-fade to Deck ${targetDeck} complete.`);
         
-        const sourceState = sourceDeck === 'A' ? currentDeckA : currentDeckB;
-        const otherDeckTrackId = (targetDeck === 'A' ? currentDeckA : currentDeckB).track?.id;
+        // Now that the fade is done, find and load the next track for the source deck
+        const nextTrack = findNextTrack(sourceState.track?.id, targetState.track?.id);
         
-        const nextTrack = findNextTrack(sourceState.track?.id, otherDeckTrackId);
-        
+        handleStop(sourceDeck); // Stop and reset the source deck first
         if (nextTrack) {
             console.log(`Loading next track on Deck ${sourceDeck}: ${nextTrack.title}`);
-            handleStop(sourceDeck);
             loadTrack(sourceDeck, nextTrack);
         } else {
             console.log(`Stopping deck ${sourceDeck}, no next track to load.`);
-            handleStop(sourceDeck);
         }
-
       } else {
         setCrossfader(prev => prev + stepValue);
       }
@@ -755,7 +755,7 @@ export default function ControlsPage() {
   };
 
   const handleTrackEnd = (endedDeck: 'A' | 'B') => {
-    console.log(`Track ended on Deck ${endedDeck}. Auto-fade enabled: ${isAutoFadeEnabled}`);
+    console.log(`Track ended on Deck ${endedDeck}. Continuous Play enabled: ${isAutoFadeEnabled}`);
     if (isAutoFadeEnabled) {
       handleAutoFade(endedDeck);
     } else {
