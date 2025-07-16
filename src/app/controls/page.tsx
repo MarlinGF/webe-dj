@@ -266,7 +266,7 @@ export default function ControlsPage() {
   const [trackToDelete, setTrackToDelete] = useState<Track | null>(null);
   const [isDragging, setIsDragging] = useState(false);
   const [fadeSpeed, setFadeSpeed] = useState(2); // seconds
-  const [isAutoFadeEnabled, setIsAutoFadeEnabled] = useState(false);
+  const [isAutoFadeEnabled, setIsAutoFadeEnabled] = useState(true);
   const [isFading, setIsFading] = useState(false);
   const [isNewPlaylistDialogOpen, setIsNewPlaylistDialogOpen] = useState(false);
 
@@ -349,7 +349,7 @@ export default function ControlsPage() {
         }
     });
     return () => unsubscribe();
-  }, [user, activePlaylist]);
+  }, [user, activePlaylist?.id]);
 
   const handlePlaylistChange = async (playlistId: string) => {
     if (!user || !playlistId) return;
@@ -541,6 +541,8 @@ export default function ControlsPage() {
     const setDeck = deck === 'A' ? setDeckA : setDeckB;
     const audioRef = deck === 'A' ? audioRefA : audioRefB;
     
+    console.log(`Deck ${deck} loading track:`, track.title);
+
     setDeck(prev => {
         if (prev.isPlaying && audioRef.current) {
           audioRef.current.pause();
@@ -663,12 +665,50 @@ export default function ControlsPage() {
     setCrossfader(value[0]);
   };
   
+  const findNextTrack = () => {
+    if (!activePlaylist || activePlaylist.items.length < 2) {
+        console.log('Not enough tracks in playlist to find next.');
+        return null;
+    }
+
+    const deckATrackId = deckA.track?.id;
+    const deckBTrackId = deckB.track?.id;
+
+    // Find the index of the louder track, which we assume is the "current" one.
+    const currentTrackId = crossfader < 0 ? deckATrackId : deckBTrackId;
+    const nextDeckTrackId = crossfader < 0 ? deckBTrackId : deckATrackId;
+
+    const currentTrackIndex = activePlaylist.items.findIndex(t => t.id === currentTrackId);
+    
+    if (currentTrackIndex === -1) {
+      console.log('Could not find current track in playlist.');
+      // Fallback: just find a track that isn't on either deck.
+      return activePlaylist.items.find(t => t.id !== deckATrackId && t.id !== deckBTrackId) || null;
+    }
+    
+    // Loop through the playlist starting from the track after the current one
+    for (let i = 1; i < activePlaylist.items.length; i++) {
+        const nextIndex = (currentTrackIndex + i) % activePlaylist.items.length;
+        const potentialTrack = activePlaylist.items[nextIndex];
+        // The next track cannot be what's on the other deck
+        if (potentialTrack.id !== nextDeckTrackId) {
+            console.log('Next track found:', potentialTrack.title);
+            return potentialTrack;
+        }
+    }
+    
+    console.log('No suitable next track found.');
+    return null;
+  };
+  
   const handleAutoFade = (fadeToDeck: 'A' | 'B') => {
     if (isFading) return;
   
-    // Start playing the target deck if it's loaded and not playing
     const targetState = fadeToDeck === 'A' ? deckA : deckB;
+    const sourceDeck = fadeToDeck === 'A' ? 'B' : 'A';
+    
     if (targetState.track && !targetState.isPlaying) {
+      console.log(`Auto-fade: Starting playback on Deck ${fadeToDeck}`);
       togglePlay(fadeToDeck);
     }
 
@@ -691,6 +731,19 @@ export default function ControlsPage() {
           fadeIntervalRef.current = null;
         }
         setIsFading(false);
+        console.log(`Auto-fade to Deck ${fadeToDeck} complete.`);
+        
+        // Now, find and load the next track for the source deck
+        const nextTrack = findNextTrack();
+        if (nextTrack) {
+            console.log(`Loading next track on Deck ${sourceDeck}: ${nextTrack.title}`);
+            handleStop(sourceDeck);
+            loadTrack(sourceDeck, nextTrack);
+        } else {
+            console.log(`Stopping deck ${sourceDeck}, no next track to load.`);
+            handleStop(sourceDeck);
+        }
+
       } else {
         setCrossfader(prev => prev + stepValue);
       }
@@ -703,8 +756,15 @@ export default function ControlsPage() {
     handleAutoFade(fadeToDeck);
   };
 
-  const handleTrackEnd = (deck: 'A' | 'B') => {
-    // This logic can be adapted or expanded later if needed
+  const handleTrackEnd = (endedDeck: 'A' | 'B') => {
+    console.log(`Track ended on Deck ${endedDeck}. Auto-fade enabled: ${isAutoFadeEnabled}`);
+    if (isAutoFadeEnabled) {
+      const fadeToDeck = endedDeck === 'A' ? 'B' : 'A';
+      handleAutoFade(fadeToDeck);
+    } else {
+      // Just stop the deck if auto-fade is off
+      handleStop(endedDeck);
+    }
   };
 
   const handleSetCue = (deck: 'A' | 'B') => {
@@ -846,7 +906,7 @@ export default function ControlsPage() {
                         <span className="text-xs font-code w-10 text-right">{fadeSpeed}s</span>
                     </div>
                      <div className="flex items-center justify-between">
-                        <Label htmlFor="autofade-switch" className="text-sm">Auto Fade</Label>
+                        <Label htmlFor="autofade-switch" className="text-sm">Continuous Play</Label>
                         <Switch
                             id="autofade-switch"
                             checked={isAutoFadeEnabled}
@@ -854,7 +914,7 @@ export default function ControlsPage() {
                         />
                     </div>
                     <Button onClick={handleStartCrossfade} disabled={isFading} className="w-full">
-                        Start Crossfade
+                        {isFading ? 'Fading...' : 'Start Crossfade'}
                     </Button>
                 </div>
             </Card>
@@ -1014,3 +1074,4 @@ export default function ControlsPage() {
     </div>
   );
 }
+
