@@ -260,8 +260,8 @@ export default function ControlsPage() {
   
   // UI/Control State
   const [crossfader, setCrossfader] = useState(-100);
-  const [isProcessing, setIsProcessing] = useState(isProcessing);
-  const [isDeleting, setIsDeleting] = useState(isDeleting);
+  const [isProcessing, setIsProcessing] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
   const [trackToDelete, setTrackToDelete] = useState<Track | null>(null);
   const [isDragging, setIsDragging] = useState(false);
   const [fadeSpeed, setFadeSpeed] = useState(2); // seconds
