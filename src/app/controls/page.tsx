@@ -40,7 +40,6 @@ import {
   AlertDialogFooter,
   AlertDialogHeader,
   AlertDialogTitle,
-  AlertDialogTrigger,
 } from '@/components/ui/alert-dialog';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import {
@@ -198,7 +197,7 @@ const TrackTable: FC<{
     onPreview: (track: Track) => void;
     onAddToPlaylist?: (track: Track) => void;
     onRemoveFromPlaylist?: (trackId: string) => void;
-    onDeleteFromLibrary?: (track: Track) => void;
+    onDeleteFromLibrary: (track: Track) => void;
     isPlaylist?: boolean;
 }> = ({ tracks, onLoadA, onLoadB, onPreview, onAddToPlaylist, onRemoveFromPlaylist, onDeleteFromLibrary, isPlaylist = false }) => (
     <Table>
@@ -261,8 +260,8 @@ export default function ControlsPage() {
   
   // UI/Control State
   const [crossfader, setCrossfader] = useState(-100);
-  const [isProcessing, setIsProcessing] = useState(false);
-  const [isDeleting, setIsDeleting] = useState(false);
+  const [isProcessing, setIsProcessing] = useState(isProcessing);
+  const [isDeleting, setIsDeleting] = useState(isDeleting);
   const [trackToDelete, setTrackToDelete] = useState<Track | null>(null);
   const [isDragging, setIsDragging] = useState(false);
   const [fadeSpeed, setFadeSpeed] = useState(2); // seconds
@@ -337,8 +336,6 @@ export default function ControlsPage() {
         };
 
         setupAudioContext();
-
-        // No cleanup needed for the context itself, it lasts for the component's lifetime
     }, [toast]);
 
 
@@ -1024,7 +1021,7 @@ export default function ControlsPage() {
                    <ScrollArea className="h-full">
                      <div className="p-2 pt-0">
                        {activePlaylist && activePlaylist.items.length > 0 ? (
-                           <TrackTable tracks={activePlaylist.items} onLoadA={track => loadTrack('A', track)} onLoadB={track => loadTrack('B', track)} onPreview={previewTrack} onRemoveFromPlaylist={handleRemoveFromPlaylist} isPlaylist={true}/>
+                           <TrackTable tracks={activePlaylist.items} onLoadA={track => loadTrack('A', track)} onLoadB={track => loadTrack('B', track)} onPreview={previewTrack} onRemoveFromPlaylist={handleRemoveFromPlaylist} onDeleteFromLibrary={setTrackToDelete} isPlaylist={true}/>
                        ) : (
                            <div className="flex items-center justify-center h-full text-muted-foreground text-sm p-4 text-center">
                                <p>{activePlaylist ? 'This playlist is empty. Add tracks from the library.' : 'Select or create a playlist to get started.'}</p>
@@ -1060,5 +1057,7 @@ export default function ControlsPage() {
     </div>
   );
 }
+
+    
 
     
