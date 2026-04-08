@@ -282,7 +282,7 @@ export default function ControlsPage() {
         const context = new (window.AudioContext || (window as any).webkitAudioContext)();
         audioContextRef.current = context;
 
-        if (audioRefA.current) {
+        if (audioRefA.current && !sourceRefA.current) {
           sourceRefA.current = context.createMediaElementSource(audioRefA.current);
           gainRefA.current = context.createGain();
           const analyser = context.createAnalyser();
@@ -291,7 +291,7 @@ export default function ControlsPage() {
           setDeckA(d => ({ ...d, analyser }));
         }
 
-        if (audioRefB.current) {
+        if (audioRefB.current && !sourceRefB.current) {
           sourceRefB.current = context.createMediaElementSource(audioRefB.current);
           gainRefB.current = context.createGain();
           const analyser = context.createAnalyser();
