@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState, useRef, useEffect, type FC } from 'react';
@@ -53,9 +52,9 @@ import {
   Square,
   Upload,
   Loader2,
-  MapPin,
   Trash2,
   X,
+  MapPin,
 } from 'lucide-react';
 import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
@@ -71,7 +70,7 @@ export interface Track {
   id: string;
   title: string;
   artist: string;
-  duration: number; // in seconds
+  duration: number;
   url: string; 
   storagePath: string;
   createdAt?: any;
@@ -242,23 +241,20 @@ export default function ControlsPage() {
   const [deckA, setDeckA] = useState<DeckState>(initialDeckState);
   const [deckB, setDeckB] = useState<DeckState>(initialDeckState);
   
-  // Library State
   const [libraryTracks, setLibraryTracks] = useState<Track[]>([]);
   const [commercials, setCommercials] = useState<Track[]>([]);
   const [groupedCommercials, setGroupedCommercials] = useState<Record<string, Track[]>>({});
 
-  // Playlist State
   const [playlists, setPlaylists] = useState<{ id: string, name: string }[]>([]);
   const [activePlaylist, setActivePlaylist] = useState<Playlist | null>(null);
   const [newPlaylistName, setNewPlaylistName] = useState('');
   
-  // UI/Control State
   const [crossfader, setCrossfader] = useState(-100);
   const [isProcessing, setIsProcessing] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
   const [trackToDelete, setTrackToDelete] = useState<Track | null>(null);
   const [isDragging, setIsDragging] = useState(false);
-  const [fadeSpeed, setFadeSpeed] = useState(2); // seconds
+  const [fadeSpeed, setFadeSpeed] = useState(2);
   const [isAutoFadeEnabled, setIsAutoFadeEnabled] = useState(true);
   const [isFading, setIsFading] = useState(false);
   const [isNewPlaylistDialogOpen, setIsNewPlaylistDialogOpen] = useState(false);
@@ -270,17 +266,14 @@ export default function ControlsPage() {
   const fadeIntervalRef = useRef<NodeJS.Timeout | null>(null);
 
   const audioContextRef = useRef<AudioContext | null>(null);
-  const sourceRefA = useRef<MediaElementAudioSourceNode | null>(null);
-  const sourceRefB = useRef<MediaElementAudioSourceNode | null>(null);
   const gainRefA = useRef<GainNode | null>(null);
   const gainRefB = useRef<GainNode | null>(null);
-  const analyserRefA = useRef<AnalyserNode | null>(null);
-  const analyserRefB = useRef<AnalyserNode | null>(null);
+  const sourceRefA = useRef<MediaElementAudioSourceNode | null>(null);
+  const sourceRefB = useRef<MediaElementAudioSourceNode | null>(null);
 
   const { user } = useAuth();
   const { toast } = useToast();
 
-  // One-time setup for the audio context and graph to prevent DOMException
   useEffect(() => {
     if (typeof window !== 'undefined' && !audioContextRef.current) {
       try {
@@ -290,19 +283,19 @@ export default function ControlsPage() {
         if (audioRefA.current) {
           sourceRefA.current = context.createMediaElementSource(audioRefA.current);
           gainRefA.current = context.createGain();
-          analyserRefA.current = context.createAnalyser();
-          analyserRefA.current.fftSize = 1024;
-          sourceRefA.current.connect(gainRefA.current).connect(analyserRefA.current).connect(context.destination);
-          setDeckA(d => ({ ...d, analyser: analyserRefA.current }));
+          const analyser = context.createAnalyser();
+          analyser.fftSize = 1024;
+          sourceRefA.current.connect(gainRefA.current).connect(analyser).connect(context.destination);
+          setDeckA(d => ({ ...d, analyser }));
         }
 
         if (audioRefB.current) {
           sourceRefB.current = context.createMediaElementSource(audioRefB.current);
           gainRefB.current = context.createGain();
-          analyserRefB.current = context.createAnalyser();
-          analyserRefB.current.fftSize = 1024;
-          sourceRefB.current.connect(gainRefB.current).connect(analyserRefB.current).connect(context.destination);
-          setDeckB(d => ({ ...d, analyser: analyserRefB.current }));
+          const analyser = context.createAnalyser();
+          analyser.fftSize = 1024;
+          sourceRefB.current.connect(gainRefB.current).connect(analyser).connect(context.destination);
+          setDeckB(d => ({ ...d, analyser }));
         }
       } catch (e) {
         console.error("Error initializing AudioContext:", e);
@@ -310,7 +303,6 @@ export default function ControlsPage() {
     }
   }, []);
 
-  // Fetch Songs
   useEffect(() => {
     if (!user) return;
     const tracksCollection = collection(db, 'users', user.uid, 'tracks');
@@ -320,7 +312,6 @@ export default function ControlsPage() {
     });
   }, [user]);
 
-  // Fetch Commercials
   useEffect(() => {
     if (!user) return;
     const commercialsCollection = collection(db, 'users', user.uid, 'commercials');
