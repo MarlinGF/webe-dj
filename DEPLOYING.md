@@ -1,21 +1,32 @@
+
 # Deploying We-Be DJ
 
-This application is deployed using Firebase App Hosting.
+This application is ready for deployment via GitHub and Firebase.
 
-## First-Time Setup
+## Push to GitHub
 
-Before your first deployment, you may need to enable the "webframeworks" experiment in the Firebase CLI. Run this command once if you encounter an error about it being disabled:
+To push your latest changes to your repository:
+
+```bash
+git remote set-url origin https://github.com/MarlinGF/webe-dj.git
+git add .
+git commit -m "Your descriptive commit message"
+git push origin main
+```
+
+## Deploying to Firebase App Hosting
+
+1. Go to the [Firebase Console](https://console.firebase.google.com/).
+2. Select your project.
+3. Navigate to **App Hosting**.
+4. Click **Get Started** and connect your GitHub repository `MarlinGF/webe-dj`.
+5. Follow the prompts to create a new backend. Firebase will automatically build and deploy your app every time you push to the `main` branch.
+
+## Manual Deployment (CLI)
+
+If you prefer using the Firebase CLI:
 
 ```bash
 firebase experiments:enable webframeworks
-```
-
-## Deployment
-
-After the one-time setup, you can deploy the application by running:
-
-```bash
 firebase deploy
 ```
-
-You can also use the "Publish" button in the Firebase Studio UI, which is the recommended method within the Studio environment.

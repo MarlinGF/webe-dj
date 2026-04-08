@@ -1,7 +1,7 @@
 
 # We-Be DJ
 
-We-Be DJ is a modern, high-performance DJ studio application for internet radio broadcasters. It provides a dual-deck interface with real-time audio visualization, smooth crossfading, and intelligent playlist management.
+We-Be DJ is a professional, high-performance DJ studio for internet radio broadcasters. It provides a dual-deck interface with real-time audio visualization, smooth crossfading, and intelligent playlist management.
 
 ## Features
 
@@ -10,11 +10,11 @@ We-Be DJ is a modern, high-performance DJ studio application for internet radio 
 - **Continuous Play**: Automated track transitions and intelligent playlist sequencing.
 - **Library Management**: Organize your music and commercials by client with easy drag-and-drop uploading.
 - **Cloud Powered**: Built with Next.js 15, Firebase (Firestore, Storage, Auth), and Web Audio API for professional-grade performance.
-- **Branded Experience**: Customizable purple accent theme and studio-first design.
+- **Branded Experience**: Customized purple accent theme and studio-first design.
 
 ## Repository
 
-Find the source code on GitHub: [https://github.com/MarlinGF/webe-dj.git](https://github.com/MarlinGF/webe-dj.git)
+The source code is hosted on GitHub: [https://github.com/MarlinGF/webe-dj.git](https://github.com/MarlinGF/webe-dj.git)
 
 ## Getting Started
 
@@ -23,7 +23,7 @@ Find the source code on GitHub: [https://github.com/MarlinGF/webe-dj.git](https:
    git clone https://github.com/MarlinGF/webe-dj.git
    ```
 2. **Install dependencies**: `npm install`
-3. **Set up Firebase**: Create a Firebase project and add your configuration to `.env.local`.
+3. **Set up Firebase**: Add your Firebase configuration to your environment variables.
 4. **Run development server**: `npm run dev`
 
 ## Deployment
