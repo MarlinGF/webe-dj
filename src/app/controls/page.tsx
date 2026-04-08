@@ -280,7 +280,7 @@ export default function ControlsPage() {
   const { user } = useAuth();
   const { toast } = useToast();
 
-  // One-time setup for the audio context and graph
+  // One-time setup for the audio context and graph to prevent DOMException
   useEffect(() => {
     if (typeof window !== 'undefined' && !audioContextRef.current) {
       try {
@@ -514,14 +514,8 @@ export default function ControlsPage() {
     const sourceState = sourceDeck === 'A' ? deckA : deckB;
     const targetState = targetDeck === 'A' ? deckA : deckB;
 
-    if (!targetState.track) {
-      handleStop(sourceDeck);
-      return;
-    }
-
-    // Start playback on the target deck immediately
     const targetAudio = targetDeck === 'A' ? audioRefA.current : audioRefB.current;
-    if (targetAudio && !targetState.isPlaying) {
+    if (targetAudio && targetState.track && !targetState.isPlaying) {
       if (audioContextRef.current?.state === 'suspended') audioContextRef.current.resume();
       targetAudio.play().catch(console.error);
       const setTargetState = targetDeck === 'A' ? setDeckA : setDeckB;
@@ -544,13 +538,10 @@ export default function ControlsPage() {
         clearInterval(fadeIntervalRef.current!);
         setIsFading(false);
         
-        // When fade finishes, stop the source deck and load the next track
         if (sourceState.track) {
           const nextTrack = findNextTrack(sourceState.track.id, targetState.track?.id);
           handleStop(sourceDeck);
-          if (nextTrack) {
-            loadTrack(sourceDeck, nextTrack);
-          }
+          if (nextTrack) loadTrack(sourceDeck, nextTrack);
         }
       } else {
         setCrossfader(prev => prev + stepValue);

@@ -6,7 +6,7 @@ ArtistLive is a modern DJ studio application for internet radio broadcasters. It
 ## Features
 
 - **Dual-Deck Player**: Independent playback controls for two tracks simultaneously.
-- **Dynamic Crossfader**: Smoothly blend between decks with adjustable fade speed.
+- **Manual & Auto Crossfade**: Smoothly blend between decks with adjustable fade speed.
 - **Continuous Play**: Automated track transitions and intelligent playlist sequencing.
 - **Library Management**: Organize your music and commercials by client.
 - **Cloud Powered**: Built with Next.js 15, Firebase (Firestore, Storage, Auth), and Web Audio API.
