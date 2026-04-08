@@ -1,7 +1,6 @@
+# We-Be DJ
 
-# ArtistLive
-
-ArtistLive is a modern DJ studio application for internet radio broadcasters. It provides a dual-deck interface with real-time audio visualization, smooth crossfading, and automated playlist management.
+We-Be DJ is a modern DJ studio application for internet radio broadcasters. It provides a dual-deck interface with real-time audio visualization, smooth crossfading, and automated playlist management.
 
 ## Features
 
@@ -11,9 +10,16 @@ ArtistLive is a modern DJ studio application for internet radio broadcasters. It
 - **Library Management**: Organize your music and commercials by client.
 - **Cloud Powered**: Built with Next.js 15, Firebase (Firestore, Storage, Auth), and Web Audio API.
 
+## Repository
+
+Find the source code on GitHub: [https://github.com/MarlinGF/webe-dj.git](https://github.com/MarlinGF/webe-dj.git)
+
 ## Getting Started
 
 1. **Clone the repository**
+   ```bash
+   git clone https://github.com/MarlinGF/webe-dj.git
+   ```
 2. **Install dependencies**: `npm install`
 3. **Set up Firebase**: Create a Firebase project and add your configuration to `.env.local`.
 4. **Run development server**: `npm run dev`

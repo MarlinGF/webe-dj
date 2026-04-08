@@ -1,11 +1,10 @@
-
 import type { Metadata } from 'next';
 import { AuthProvider } from '@/lib/auth-provider';
 import { Toaster } from '@/components/ui/toaster';
 import './globals.css';
 
 export const metadata: Metadata = {
-  title: 'ArtistLive',
+  title: 'We-Be DJ',
   description: 'Your studio for internet radio.',
 };
 
