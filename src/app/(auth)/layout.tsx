@@ -1,3 +1,4 @@
+
 import { Music } from 'lucide-react';
 import Link from 'next/link';
 
@@ -12,7 +13,7 @@ export default function AuthLayout({
         <div className="mb-8 flex flex-col items-center text-center">
             <Link href="/" className="flex items-center gap-2 text-2xl font-bold text-primary">
                 <Music className="h-8 w-8" />
-                <h1 className="font-headline text-4xl">We-Be DJ</h1>
+                <h1 className="font-headline text-4xl">ArtistLive</h1>
             </Link>
         </div>
         {children}

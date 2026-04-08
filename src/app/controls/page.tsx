@@ -1,7 +1,7 @@
 
 'use client';
 
-import { useState, useRef, useEffect, type FC, type ChangeEvent } from 'react';
+import { useState, useRef, useEffect, type FC } from 'react';
 import {
   collection,
   addDoc,
@@ -12,7 +12,6 @@ import {
   doc,
   deleteDoc,
   getDoc,
-  updateDoc,
 } from 'firebase/firestore';
 import {
   ref as storageRef,
@@ -39,7 +38,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
-import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import {
   Play,
   Pause,
@@ -127,7 +126,7 @@ const PlayerDeck: FC<{
     <Card className="flex-1 bg-card/50 border-0 shadow-none">
         <CardContent className="p-3 space-y-2">
             <div className="flex justify-between items-center">
-                <CardTitle className="font-headline text-lg">
+                <CardTitle className="font-headline text-lg text-primary">
                     Deck {deck}
                 </CardTitle>
                 <div className="flex items-center gap-2 w-1/2">

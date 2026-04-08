@@ -1,3 +1,4 @@
+
 'use client';
 
 import Link from 'next/link';
@@ -21,7 +22,7 @@ export function MainHeader() {
         <div className="flex items-center gap-6">
             <Link href="/controls" className="flex items-center gap-2 text-2xl font-bold text-primary">
               <Music className="h-7 w-7" />
-              <h1 className="hidden font-headline text-3xl sm:block">We-Be DJ</h1>
+              <h1 className="hidden font-headline text-3xl sm:block">ArtistLive</h1>
             </Link>
             <nav className="flex items-center gap-2">
                 {navLinks.map((link) => (

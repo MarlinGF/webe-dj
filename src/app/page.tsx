@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useEffect } from 'react';
@@ -21,7 +22,7 @@ export default function Home() {
     return (
       <div className="flex h-screen w-full flex-col items-center justify-center bg-background">
         <Music className="h-16 w-16 animate-pulse text-primary" />
-        <p className="mt-4 text-lg font-semibold text-primary">Loading We-Be DJ...</p>
+        <p className="mt-4 text-lg font-semibold text-primary">Loading ArtistLive...</p>
       </div>
     );
   }
@@ -31,7 +32,7 @@ export default function Home() {
       <header className="container mx-auto flex items-center justify-between p-4">
         <Link href="/" className="flex items-center gap-2 text-2xl font-bold text-primary">
           <Music className="h-7 w-7" />
-          <h1 className="font-headline text-3xl">We-Be DJ</h1>
+          <h1 className="font-headline text-3xl">ArtistLive</h1>
         </Link>
         <div className="flex items-center gap-2">
           <Button variant="ghost" asChild>
@@ -51,7 +52,7 @@ export default function Home() {
         </div>
         <h2 className="font-headline text-5xl md:text-7xl font-bold tracking-tighter text-primary">Your Studio, Your Sound</h2>
         <p className="mt-4 max-w-2xl text-lg text-foreground/80">
-          We-Be DJ gives you the tools to run your internet radio station. Curate playlists, mix tracks, and broadcast your sound to the world.
+          ArtistLive gives you the tools to run your internet radio station. Curate playlists, mix tracks, and broadcast your sound to the world.
         </p>
         <div className="mt-8 flex gap-4">
           <Button size="lg" asChild>
@@ -61,7 +62,7 @@ export default function Home() {
         <p className="mt-4 text-sm text-muted-foreground">Go live in minutes.</p>
       </main>
       <footer className="py-6 text-center text-sm text-muted-foreground">
-        <p>&copy; {new Date().getFullYear()} We-Be DJ. All Rights Reserved.</p>
+        <p>&copy; {new Date().getFullYear()} ArtistLive. All Rights Reserved.</p>
       </footer>
     </div>
   );
