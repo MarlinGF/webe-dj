@@ -1,3 +1,4 @@
+
 # We-Be DJ
 
 We-Be DJ is a modern DJ studio application for internet radio broadcasters. It provides a dual-deck interface with real-time audio visualization, smooth crossfading, and automated playlist management.

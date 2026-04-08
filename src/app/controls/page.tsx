@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState, useRef, useEffect, type FC } from 'react';
@@ -249,6 +250,7 @@ export default function ControlsPage() {
   const [activePlaylist, setActivePlaylist] = useState<Playlist | null>(null);
   const [newPlaylistName, setNewPlaylistName] = useState('');
   
+  // UI/Control State
   const [crossfader, setCrossfader] = useState(-100);
   const [isProcessing, setIsProcessing] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
