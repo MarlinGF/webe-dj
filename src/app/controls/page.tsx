@@ -270,7 +270,6 @@ export default function ControlsPage() {
   const fadeIntervalRef = useRef<NodeJS.Timeout | null>(null);
 
   const audioContextRef = useRef<AudioContext | null>(null);
-  
   const sourceRefA = useRef<MediaElementAudioSourceNode | null>(null);
   const sourceRefB = useRef<MediaElementAudioSourceNode | null>(null);
   const gainRefA = useRef<GainNode | null>(null);
@@ -281,35 +280,35 @@ export default function ControlsPage() {
   const { user } = useAuth();
   const { toast } = useToast();
 
-    // One-time setup for the audio context and graph
-    useEffect(() => {
-        if (!audioContextRef.current && typeof window !== 'undefined') {
-            try {
-                const context = new (window.AudioContext || (window as any).webkitAudioContext)();
-                audioContextRef.current = context;
+  // One-time setup for the audio context and graph
+  useEffect(() => {
+    if (typeof window !== 'undefined' && !audioContextRef.current) {
+      try {
+        const context = new (window.AudioContext || (window as any).webkitAudioContext)();
+        audioContextRef.current = context;
 
-                if (audioRefA.current) {
-                    sourceRefA.current = context.createMediaElementSource(audioRefA.current);
-                    gainRefA.current = context.createGain();
-                    analyserRefA.current = context.createAnalyser();
-                    analyserRefA.current.fftSize = 1024;
-                    sourceRefA.current.connect(gainRefA.current).connect(analyserRefA.current).connect(context.destination);
-                    setDeckA(d => ({ ...d, analyser: analyserRefA.current }));
-                }
-
-                if (audioRefB.current) {
-                    sourceRefB.current = context.createMediaElementSource(audioRefB.current);
-                    gainRefB.current = context.createGain();
-                    analyserRefB.current = context.createAnalyser();
-                    analyserRefB.current.fftSize = 1024;
-                    sourceRefB.current.connect(gainRefB.current).connect(analyserRefB.current).connect(context.destination);
-                    setDeckB(d => ({ ...d, analyser: analyserRefB.current }));
-                }
-            } catch (e) {
-                console.error("Error initializing AudioContext:", e);
-            }
+        if (audioRefA.current) {
+          sourceRefA.current = context.createMediaElementSource(audioRefA.current);
+          gainRefA.current = context.createGain();
+          analyserRefA.current = context.createAnalyser();
+          analyserRefA.current.fftSize = 1024;
+          sourceRefA.current.connect(gainRefA.current).connect(analyserRefA.current).connect(context.destination);
+          setDeckA(d => ({ ...d, analyser: analyserRefA.current }));
         }
-    }, []);
+
+        if (audioRefB.current) {
+          sourceRefB.current = context.createMediaElementSource(audioRefB.current);
+          gainRefB.current = context.createGain();
+          analyserRefB.current = context.createAnalyser();
+          analyserRefB.current.fftSize = 1024;
+          sourceRefB.current.connect(gainRefB.current).connect(analyserRefB.current).connect(context.destination);
+          setDeckB(d => ({ ...d, analyser: analyserRefB.current }));
+        }
+      } catch (e) {
+        console.error("Error initializing AudioContext:", e);
+      }
+    }
+  }, []);
 
   // Fetch Songs
   useEffect(() => {
@@ -463,7 +462,11 @@ export default function ControlsPage() {
     const setState = deck === 'A' ? setDeckA : setDeckB;
     const audio = deck === 'A' ? audioRefA.current : audioRefB.current;
     if (!audio || !state.track) return;
-    state.isPlaying ? audio.pause() : audio.play().catch(console.error);
+    if (state.isPlaying) {
+      audio.pause();
+    } else {
+      audio.play().catch(console.error);
+    }
     setState(prev => ({ ...prev, isPlaying: !prev.isPlaying }));
   };
 
@@ -516,7 +519,15 @@ export default function ControlsPage() {
       return;
     }
 
-    togglePlay(targetDeck);
+    // Start playback on the target deck immediately
+    const targetAudio = targetDeck === 'A' ? audioRefA.current : audioRefB.current;
+    if (targetAudio && !targetState.isPlaying) {
+      if (audioContextRef.current?.state === 'suspended') audioContextRef.current.resume();
+      targetAudio.play().catch(console.error);
+      const setTargetState = targetDeck === 'A' ? setDeckA : setDeckB;
+      setTargetState(prev => ({ ...prev, isPlaying: true }));
+    }
+
     setIsFading(true);
     const startValue = crossfader;
     const endValue = targetDeck === 'B' ? 100 : -100;
@@ -532,10 +543,14 @@ export default function ControlsPage() {
         setCrossfader(endValue);
         clearInterval(fadeIntervalRef.current!);
         setIsFading(false);
+        
+        // When fade finishes, stop the source deck and load the next track
         if (sourceState.track) {
           const nextTrack = findNextTrack(sourceState.track.id, targetState.track?.id);
           handleStop(sourceDeck);
-          if (nextTrack) loadTrack(sourceDeck, nextTrack);
+          if (nextTrack) {
+            loadTrack(sourceDeck, nextTrack);
+          }
         }
       } else {
         setCrossfader(prev => prev + stepValue);
@@ -598,7 +613,7 @@ export default function ControlsPage() {
             <Card className={`flex flex-col relative transition-colors ${isDragging ? 'border-primary bg-primary/10' : ''}`} onDragEnter={() => setIsDragging(true)} onDragOver={e => e.preventDefault()} onDragLeave={() => setIsDragging(false)} onDrop={e => { e.preventDefault(); setIsDragging(false); handleFiles(e.dataTransfer.files); }}>
                 {isDragging && <div className="absolute inset-0 z-10 flex flex-col items-center justify-center bg-background/80 rounded-lg"><Upload className="h-10 w-10 text-primary animate-bounce" /><p className="mt-2 text-lg font-semibold text-primary">Drop files to upload</p></div>}
                 <CardHeader className="p-4 pb-0"><CardTitle className="font-headline flex items-center gap-2 text-xl"><Music className="h-5 w-5"/> Library</CardTitle></CardHeader>
-                <CardContent className="flex-1 flex flex-col overflow-hidden p-0">
+                <CardContent className="p-0 flex flex-col overflow-hidden">
                    <Tabs defaultValue="songs" className="flex-1 flex flex-col">
                      <div className="flex items-center justify-between px-4 py-2 border-b">
                         <TabsList><TabsTrigger value="songs">Songs</TabsTrigger><TabsTrigger value="commercials">Commercials</TabsTrigger></TabsList>
