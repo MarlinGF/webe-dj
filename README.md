@@ -1,7 +1,7 @@
 
-# We-Be DJ
+# We-be DJ
 
-We-Be DJ is a professional, high-performance DJ studio for internet radio broadcasters. It provides a dual-deck interface with real-time audio visualization, smooth crossfading, and intelligent playlist management.
+We-be DJ is a professional, high-performance DJ studio for internet radio broadcasters. It provides a dual-deck interface with real-time audio visualization, smooth crossfading, and intelligent playlist management.
 
 ## Features
 

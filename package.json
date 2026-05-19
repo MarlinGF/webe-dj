@@ -4,10 +4,13 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "dev": "next dev",
+    "predev": "rm -rf .next",
+    "dev": "next dev --turbopack",
+    "dev:clean": "rm -rf .next && next dev --turbopack",
+    "dev:webpack": "next dev",
     "genkit:dev": "genkit start -- tsx src/ai/dev.ts",
     "genkit:watch": "genkit start -- tsx --watch src/ai/dev.ts",
-    "build": "next build",
+    "build": "next build --turbopack",
     "start": "next start",
     "lint": "next lint",
     "typecheck": "tsc --noEmit"

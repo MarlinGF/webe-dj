@@ -5,7 +5,7 @@ import { Toaster } from '@/components/ui/toaster';
 import './globals.css';
 
 export const metadata: Metadata = {
-  title: 'We-Be DJ',
+  title: 'We-be DJ',
   description: 'Your studio for internet radio.',
 };
 

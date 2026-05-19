@@ -44,7 +44,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       {loading ? (
         <div className="flex h-screen w-full flex-col items-center justify-center bg-background">
           <Music className="h-16 w-16 animate-pulse text-primary" />
-          <p className="mt-4 text-lg font-semibold text-primary">Loading ArtistLive...</p>
+          <p className="mt-4 text-lg font-semibold text-primary">Loading We-be DJ...</p>
         </div>
       ) : (
         children
