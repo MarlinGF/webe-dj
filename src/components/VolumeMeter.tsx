@@ -15,7 +15,7 @@ const MAX_DB = 0;
 
 export function VolumeMeter({ analyser, isPlaying }: VolumeMeterProps) {
   const [level, setLevel] = useState(0);
-  const animationFrameRef = useRef<number>();
+  const animationFrameRef = useRef<number | null>(null);
 
   useEffect(() => {
     if (!analyser || !isPlaying) {

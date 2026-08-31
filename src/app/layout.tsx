@@ -5,8 +5,12 @@ import { Toaster } from '@/components/ui/toaster';
 import './globals.css';
 
 export const metadata: Metadata = {
-  title: 'We-be DJ',
-  description: 'Your studio for internet radio.',
+  title: {
+    default: 'We-be DJ',
+    template: '%s | We-be DJ',
+  },
+  description: 'A browser-based radio automation studio with dual decks, playlists, crossfading, and commercial management.',
+  applicationName: 'We-be DJ',
 };
 
 export default function RootLayout({

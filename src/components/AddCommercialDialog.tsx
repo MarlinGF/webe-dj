@@ -5,17 +5,13 @@ import { useState, useRef, type FC } from 'react';
 import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
-import { useAuth } from '@/hooks/use-auth';
-import { db, storage } from '@/lib/firebase';
-import { collection, addDoc, serverTimestamp } from 'firebase/firestore';
-import { ref as storageRef, uploadBytesResumable, getDownloadURL } from 'firebase/storage';
 import { useToast } from '@/hooks/use-toast';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Loader2, FileAudio } from 'lucide-react';
-import type { User } from 'firebase/auth';
+import type { LocalTrackRecord } from '@/lib/local-library';
 
 const formSchema = z.object({
   client: z.string().min(1, { message: 'Client name is required.' }),
@@ -23,10 +19,10 @@ const formSchema = z.object({
 });
 
 interface AddCommercialDialogProps {
-  user: User | null;
+  onAdd: (commercial: Omit<LocalTrackRecord, 'id' | 'ownerId' | 'createdAt'>) => Promise<void>;
 }
 
-export const AddCommercialDialog: FC<AddCommercialDialogProps> = ({ user }) => {
+export const AddCommercialDialog: FC<AddCommercialDialogProps> = ({ onAdd }) => {
   const [isOpen, setIsOpen] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -52,54 +48,33 @@ export const AddCommercialDialog: FC<AddCommercialDialogProps> = ({ user }) => {
   };
 
   const onSubmit = async (data: z.infer<typeof formSchema>) => {
-    if (!user) {
-      toast({ variant: 'destructive', title: 'Not authenticated' });
-      return;
-    }
-    
     setIsUploading(true);
     const { file, client } = data;
 
     try {
-      const storagePath = `users/${user.uid}/commercials/${Date.now()}-${file.name}`;
-      const commercialStorageRef = storageRef(storage, storagePath);
-      const uploadTask = uploadBytesResumable(commercialStorageRef, file);
-
-      uploadTask.on('state_changed', 
-        (snapshot) => {}, 
-        (error) => {
-          console.error('Upload failed:', error);
-          toast({ variant: 'destructive', title: 'Upload Failed', description: error.message });
-          setIsUploading(false);
-        },
-        async () => {
-          const downloadURL = await getDownloadURL(uploadTask.snapshot.ref);
-          const duration = await new Promise<number>((resolve, reject) => {
-            const audio = document.createElement('audio');
-            audio.addEventListener('loadedmetadata', () => resolve(audio.duration));
-            audio.addEventListener('error', (e) => reject('Could not determine audio duration.'));
-            audio.src = downloadURL;
-          });
-
-          const commercialsCollection = collection(db, 'users', user.uid, 'commercials');
-          await addDoc(commercialsCollection, {
-            title: file.name.replace(/\.[^/.]+$/, ""),
-            artist: 'Commercial',
-            duration,
-            url: downloadURL,
-            storagePath,
-            client,
-            createdAt: serverTimestamp(),
-          });
-
-          toast({ title: 'Commercial Uploaded', description: `"${file.name}" for ${client} has been added.` });
-          setIsUploading(false);
-          handleDialogClose();
-        }
-      );
+      const localUrl = URL.createObjectURL(file);
+      const duration = await new Promise<number>((resolve, reject) => {
+        const audio = document.createElement('audio');
+        audio.addEventListener('loadedmetadata', () => resolve(audio.duration));
+        audio.addEventListener('error', () => reject(new Error('Could not determine audio duration.')));
+        audio.src = localUrl;
+      });
+      URL.revokeObjectURL(localUrl);
+      await onAdd({
+        title: file.name.replace(/\.[^/.]+$/, ''),
+        artist: 'Commercial',
+        duration,
+        type: 'commercial',
+        client,
+        source: 'upload',
+        audioBlob: file,
+      });
+      toast({ title: 'Commercial added', description: `"${file.name}" for ${client} is stored on this device.` });
+      handleDialogClose();
     } catch (error) {
       console.error('Error during upload process:', error);
       toast({ variant: 'destructive', title: 'Error', description: 'An unexpected error occurred.' });
+    } finally {
       setIsUploading(false);
     }
   };
@@ -115,7 +90,7 @@ export const AddCommercialDialog: FC<AddCommercialDialogProps> = ({ user }) => {
       <DialogContent onInteractOutside={(e) => { if (isUploading) e.preventDefault(); }}>
         <DialogHeader>
           <DialogTitle>Add New Commercial</DialogTitle>
-          <DialogDescription>Upload an audio file and assign it to a client.</DialogDescription>
+          <DialogDescription>Store an audio file on this device and assign it to a client.</DialogDescription>
         </DialogHeader>
         <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
           <div>
@@ -134,7 +109,7 @@ export const AddCommercialDialog: FC<AddCommercialDialogProps> = ({ user }) => {
             </Button>
             <Button type="submit" disabled={isUploading}>
               {isUploading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-              Upload
+              Add to Device
             </Button>
           </DialogFooter>
         </form>

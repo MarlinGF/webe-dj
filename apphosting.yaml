@@ -5,3 +5,22 @@ runConfig:
   # Increase this value if you'd like to automatically spin up
   # more instances in response to increased traffic.
   maxInstances: 1
+
+env:
+  - variable: NEXT_PUBLIC_APP_URL
+    value: https://studio--we-be-live-xek44.us-central1.hosted.app
+    availability:
+      - BUILD
+      - RUNTIME
+  - variable: STRIPE_LIFETIME_PRICE_ID
+    value: price_1UAdpCPSdTKmRhJ4D2X61955
+    availability:
+      - RUNTIME
+  - variable: STRIPE_RESTRICTED_KEY
+    secret: STRIPE_LIVE_RESTRICTED_KEY@1
+    availability:
+      - RUNTIME
+  - variable: STRIPE_WEBHOOK_SECRET
+    secret: STRIPE_LIVE_WEBHOOK_SECRET@1
+    availability:
+      - RUNTIME

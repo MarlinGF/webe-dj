@@ -1,21 +1,35 @@
-# **App Name**: ArtistLive
+# We-be DJ Product Blueprint
 
-## Core Features:
+## Purpose
 
-- Secure Authentication: Enable artists to sign up and log in securely using Firebase Auth with email/password authentication.
-- Artist Dashboard: Provide artists with a dedicated dashboard to manage their streams and settings.
-- Stream Configuration: Allow artists to configure their Mux stream settings, including stream key, resolution, and bitrate.
-- Shareable Stream Link: Generate a unique, shareable link for each live stream to allow artists to promote their streams on other platforms.
-- Audio Preview: Allow artists to preview the current state of their audio before going live
-- Customized Chat Tool: Let an LLM use a series of prompt and filter tools to create customized chat commands that the streamer may set.
+We-be DJ is a private browser-based studio for preparing and running programmed audio. The sellable core is intentionally focused: manage a library, prepare playlists, operate two decks, transition between tracks, and organize commercial audio.
 
-## Style Guidelines:
+## Primary customer
 
-- Primary color: Deep indigo (#4B0082), evokes creativity and sophistication, ideal for artists.
-- Background color: Light lavender (#E6E6FA), maintains focus on the stream and content.
-- Accent color: Bright fuchsia (#FF00FF), for interactive elements and calls to action, providing a vivid contrast.
-- Headline font: 'Belleza' (sans-serif) - adds personality and aligns with art and design; should longer text be included, the body will default to Alegreya.
-- Code font: 'Source Code Pro' for configuration details or any code-related display.
-- Use clean, minimalist icons suitable for a professional and artistic environment.
-- Maintain a clean and intuitive layout, ensuring easy navigation and focus on the stream preview and configuration options.
-- Incorporate subtle transitions and animations to enhance user experience without distracting from the live stream.
+- Independent internet radio operators
+- Small stations and venue programmers
+- Organizations that need a simple managed audio rotation without traditional broadcast-console complexity
+
+## Core workflow
+
+1. Create a private account.
+2. Upload songs and commercial spots.
+3. Create a playlist and arrange the desired inventory.
+4. Load tracks into Deck A and Deck B.
+5. Preview, cue, and transition manually or enable continuous play.
+
+## Product boundaries
+
+- We-be DJ manages playback and audio inventory; it does not provide a streaming encoder or distribution service.
+- Customers remain responsible for music, performance, advertising, and broadcast rights.
+- Firebase handles identity and trusted purchase entitlements; customer audio and playlists stay on the device.
+- The iOS wrapper is optional and has its own release and support requirements.
+
+## Commercial-release gates
+
+- Production acceptance test completed
+- Buyer installation and support process documented
+- Privacy policy and terms published
+- Proprietary software terms reviewed by counsel
+- Audio-rights disclaimer reviewed
+- Pricing, update policy, refund policy, and support window defined

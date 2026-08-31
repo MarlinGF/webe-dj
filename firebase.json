@@ -3,10 +3,6 @@
   "firestore": {
     "rules": "firestore.rules"
   },
-  "storage": {
-    "rules": "storage.rules",
-    "cors": "storage.cors.json"
-  },
   "hosting": {
     "source": ".",
     "ignore": [

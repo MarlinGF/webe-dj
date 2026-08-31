@@ -51,15 +51,30 @@ export default function Home() {
         </div>
         <h2 className="font-headline text-5xl md:text-7xl font-bold tracking-tighter text-primary">Your Studio, Your Sound</h2>
         <p className="mt-4 max-w-2xl text-lg text-foreground/80">
-          We-be DJ gives you the tools to run your internet radio station. Curate playlists, mix tracks, and broadcast your sound to the world.
+          Prepare playlists, manage commercial audio, and run smooth two-deck playback from one focused studio.
         </p>
         <div className="mt-8 flex gap-4">
           <Button size="lg" asChild>
             <Link href="/signup">Start Your Session</Link>
           </Button>
         </div>
-        <p className="mt-4 text-sm text-muted-foreground">Go live in minutes.</p>
+        <p className="mt-4 text-sm text-muted-foreground">Built for independent radio and programmed audio.</p>
       </main>
+      <section className="border-y bg-card/40 px-6 py-12">
+        <div className="mx-auto grid max-w-4xl gap-4 md:grid-cols-2">
+          <div className="rounded-xl border bg-card p-6">
+            <p className="text-sm font-semibold text-primary">Free</p>
+            <p className="mt-2 text-3xl font-bold">$0</p>
+            <p className="mt-3 text-muted-foreground">Try the complete studio with up to four songs stored privately on your device.</p>
+          </div>
+          <div className="rounded-xl border border-primary/50 bg-primary/5 p-6">
+            <p className="text-sm font-semibold text-primary">Lifetime</p>
+            <p className="mt-2 text-3xl font-bold">$9.99 <span className="text-sm font-normal text-muted-foreground">one time</span></p>
+            <p className="mt-3 text-muted-foreground">Unlock an unlimited local song library with no subscription.</p>
+            <p className="mt-4 text-xs text-muted-foreground">Secure purchasing is coming next.</p>
+          </div>
+        </div>
+      </section>
       <footer className="py-6 text-center text-sm text-muted-foreground">
         <p>&copy; {new Date().getFullYear()} We-be DJ. All Rights Reserved.</p>
       </footer>
