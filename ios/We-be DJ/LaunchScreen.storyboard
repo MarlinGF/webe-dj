@@ -21,7 +21,7 @@
                                     <constraint firstAttribute="height" constant="168" id="LaunchIconHeight"/>
                                 </constraints>
                             </imageView>
-                            <label opaque="NO" userInteractionEnabled="NO" contentMode="left" text="We-be Jukebox" textAlignment="center" lineBreakMode="tailTruncation" baselineAdjustment="alignBaselines" translatesAutoresizingMaskIntoConstraints="NO" id="LaunchTitleLabel">
+                            <label opaque="NO" userInteractionEnabled="NO" contentMode="left" text="We-be DJ" textAlignment="center" lineBreakMode="tailTruncation" baselineAdjustment="alignBaselines" translatesAutoresizingMaskIntoConstraints="NO" id="LaunchTitleLabel">
                                 <rect key="frame" x="91.5" y="484" width="210" height="32"/>
                                 <fontDescription key="fontDescription" type="boldSystem" pointSize="27"/>
                                 <color key="textColor" red="0.9254901961" green="0.9529411765" blue="1" alpha="1" colorSpace="custom" customColorSpace="sRGB"/>

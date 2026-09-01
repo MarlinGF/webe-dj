@@ -39,14 +39,16 @@ struct ContentView: View {
                 AppColors.background.ignoresSafeArea()
 
                 VStack(spacing: 14) {
-                    header
+                    header(compact: proxy.size.width <= 920)
+                        .frame(width: max(0, proxy.size.width - 36))
 
                     if proxy.size.width > 920 {
                         desktopWorkspace
                     } else {
-                        compactWorkspace
+                        compactWorkspace(width: max(0, proxy.size.width - 36))
                     }
                 }
+                .frame(width: max(0, proxy.size.width - 36), alignment: .top)
                 .padding(18)
             }
         }
@@ -93,47 +95,110 @@ struct ContentView: View {
         }
     }
 
-    private var header: some View {
-        HStack(spacing: 14) {
-            Label("We-be DJ", systemImage: "music.note")
-                .font(.system(size: 30, weight: .bold, design: .rounded))
-                .foregroundStyle(AppColors.accent)
-
-            Spacer()
-
-            StatPill(title: "Songs", value: "\(library.tracks.count)", icon: "music.note.list")
-            StatPill(title: "Set", value: "\(library.activePlaylistTracks.count)", icon: "list.bullet")
-
-            if !purchases.hasLifetimeAccess {
-                Button { isShowingStore = true } label: {
-                    Label("Unlock \(purchases.displayPrice)", systemImage: "lock.open")
+    @ViewBuilder
+    private func header(compact: Bool) -> some View {
+        if compact {
+            VStack(spacing: 10) {
+                HStack(spacing: 10) {
+                    brandTitle(size: 22)
+                    Spacer()
+                    compactPrivacyButton
+                    compactImportMenu
                 }
-                .buttonStyle(DJButtonStyle(prominent: true))
+
+                HStack(spacing: 10) {
+                    Label("\(library.tracks.count) of \(freeSongLimit) free songs", systemImage: "music.note.list")
+                        .font(.subheadline.weight(.semibold))
+                        .foregroundStyle(.secondary)
+                        .lineLimit(1)
+                        .minimumScaleFactor(0.75)
+                    Spacer()
+                    if !purchases.hasLifetimeAccess { unlockButton(compactLabel: true) }
+                }
             }
-
-            Button { isShowingPrivacy = true } label: {
-                Image(systemName: "person.crop.circle")
+            .frame(maxWidth: .infinity)
+        } else {
+            HStack(spacing: 14) {
+                brandTitle(size: 30)
+                Spacer()
+                StatPill(title: "Songs", value: "\(library.tracks.count)", icon: "music.note.list")
+                StatPill(title: "Set", value: "\(library.activePlaylistTracks.count)", icon: "list.bullet")
+                if !purchases.hasLifetimeAccess { unlockButton(compactLabel: false) }
+                privacyButton
+                importMenu
             }
-            .buttonStyle(DJButtonStyle())
+        }
+    }
 
-            Menu {
-                Button("On This Device", systemImage: "square.and.arrow.down") {
-                    isImportingFiles = true
-                }
-                Button("Choose iTunes Songs", systemImage: "music.note.list") {
-                    Task { await openMusicLibraryPicker() }
-                }
-                Button("Import Playable iTunes Library", systemImage: "square.and.arrow.down.on.square") {
-                    Task { await importPlayableMusicLibrary() }
-                }
-            } label: {
-                Label("Import", systemImage: "plus")
-                    .labelStyle(.iconOnly)
-                    .font(.title2.weight(.bold))
-                    .frame(width: 48, height: 48)
-                    .background(AppColors.accent, in: Circle())
-                    .foregroundStyle(.black)
+    private func brandTitle(size: CGFloat) -> some View {
+        Label("We-be DJ", systemImage: "music.note")
+            .font(.system(size: size, weight: .bold, design: .rounded))
+            .foregroundStyle(AppColors.accent)
+            .lineLimit(1)
+            .minimumScaleFactor(0.75)
+            .layoutPriority(1)
+    }
+
+    private func unlockButton(compactLabel: Bool) -> some View {
+        Button { isShowingStore = true } label: {
+            Label(compactLabel ? "Unlock" : "Unlock \(purchases.displayPrice)", systemImage: "lock.open")
+        }
+        .buttonStyle(DJButtonStyle(prominent: true))
+    }
+
+    private var privacyButton: some View {
+        Button { isShowingPrivacy = true } label: {
+            Image(systemName: "person.crop.circle")
+        }
+        .buttonStyle(DJButtonStyle())
+    }
+
+    private var compactPrivacyButton: some View {
+        Button { isShowingPrivacy = true } label: {
+            Image(systemName: "person.crop.circle")
+                .frame(width: 40, height: 40)
+                .background(AppColors.panel, in: RoundedRectangle(cornerRadius: 9))
+                .overlay(RoundedRectangle(cornerRadius: 9).stroke(AppColors.border))
+        }
+        .foregroundStyle(.white)
+    }
+
+    private var compactImportMenu: some View {
+        Menu {
+            Button("On This Device", systemImage: "square.and.arrow.down") { isImportingFiles = true }
+            Button("Choose iTunes Songs", systemImage: "music.note.list") {
+                Task { await openMusicLibraryPicker() }
             }
+            Button("Import Playable iTunes Library", systemImage: "square.and.arrow.down.on.square") {
+                Task { await importPlayableMusicLibrary() }
+            }
+        } label: {
+            Image(systemName: "plus")
+                .font(.headline.bold())
+                .frame(width: 40, height: 40)
+                .background(AppColors.accent, in: Circle())
+                .foregroundStyle(.black)
+        }
+    }
+
+    private var importMenu: some View {
+        Menu {
+            Button("On This Device", systemImage: "square.and.arrow.down") {
+                isImportingFiles = true
+            }
+            Button("Choose iTunes Songs", systemImage: "music.note.list") {
+                Task { await openMusicLibraryPicker() }
+            }
+            Button("Import Playable iTunes Library", systemImage: "square.and.arrow.down.on.square") {
+                Task { await importPlayableMusicLibrary() }
+            }
+        } label: {
+            Label("Import", systemImage: "plus")
+                .labelStyle(.iconOnly)
+                .font(.title2.weight(.bold))
+                .frame(width: 48, height: 48)
+                .background(AppColors.accent, in: Circle())
+                .foregroundStyle(.black)
         }
     }
 
@@ -228,14 +293,16 @@ struct ContentView: View {
                 libraryPanel
                 playlistPanel
             }
+            .frame(maxWidth: .infinity)
         }
     }
 
-    private var compactWorkspace: some View {
+    private func compactWorkspace(width: CGFloat) -> some View {
         ScrollView {
             VStack(spacing: 14) {
                 DeckPanel(
                     state: player.deckA,
+                    compact: true,
                     loadHint: "Load A from library or playlist",
                     onPlay: { player.toggle(.a) },
                     onStop: { player.stop(.a) },
@@ -247,6 +314,7 @@ struct ContentView: View {
                         player.applyVolumes()
                     }
                 )
+                .frame(width: width)
 
                 MixerPanel(
                     crossfader: $player.crossfader,
@@ -256,9 +324,11 @@ struct ContentView: View {
                     toggleContinuousPlay: toggleContinuousPlay,
                     startCrossfade: startCrossfade
                 )
+                .frame(width: width)
 
                 DeckPanel(
                     state: player.deckB,
+                    compact: true,
                     loadHint: "Load B from library or playlist",
                     onPlay: { player.toggle(.b) },
                     onStop: { player.stop(.b) },
@@ -270,13 +340,18 @@ struct ContentView: View {
                         player.applyVolumes()
                     }
                 )
+                .frame(width: width)
 
                 libraryPanel
+                    .frame(width: width)
                     .frame(minHeight: 420)
                 playlistPanel
+                    .frame(width: width)
                     .frame(minHeight: 360)
             }
+            .frame(width: width)
         }
+        .frame(width: width)
     }
 
     private var libraryPanel: some View {
@@ -706,6 +781,7 @@ private enum LibraryTab: String, CaseIterable, Identifiable {
 
 private struct DeckPanel: View {
     let state: DeckState
+    var compact = false
     let loadHint: String
     let onPlay: () -> Void
     let onStop: () -> Void
@@ -747,7 +823,7 @@ private struct DeckPanel: View {
                     .foregroundStyle(.secondary)
             }
 
-            HStack(spacing: 12) {
+            HStack(spacing: 5) {
                 IconButton(systemName: "gobackward.5", disabled: state.track == nil) { onNudge(-5) }
                 IconButton(systemName: state.isPlaying ? "pause.fill" : "play.fill", prominent: true, disabled: state.track == nil, action: onPlay)
                 IconButton(systemName: "stop.fill", disabled: state.track == nil, action: onStop)
@@ -760,8 +836,10 @@ private struct DeckPanel: View {
                     .foregroundStyle(.secondary)
                 Slider(value: Binding(get: { state.volume }, set: onVolume), in: 0...1)
                     .tint(AppColors.accent)
-                    .frame(maxWidth: 150)
-                LevelMeter(level: state.isPlaying ? state.effectiveVolume : 0)
+                    .frame(maxWidth: 48)
+                if !compact {
+                    LevelMeter(level: state.isPlaying ? state.effectiveVolume : 0)
+                }
             }
         }
         .padding(18)
