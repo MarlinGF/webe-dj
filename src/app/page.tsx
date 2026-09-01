@@ -71,12 +71,17 @@ export default function Home() {
             <p className="text-sm font-semibold text-primary">Lifetime</p>
             <p className="mt-2 text-3xl font-bold">$9.99 <span className="text-sm font-normal text-muted-foreground">one time</span></p>
             <p className="mt-3 text-muted-foreground">Unlock an unlimited local song library with no subscription.</p>
-            <p className="mt-4 text-xs text-muted-foreground">Secure purchasing is coming next.</p>
+            <p className="mt-4 text-xs text-muted-foreground">One secure purchase. No subscription.</p>
           </div>
         </div>
       </section>
       <footer className="py-6 text-center text-sm text-muted-foreground">
         <p>&copy; {new Date().getFullYear()} We-be DJ. All Rights Reserved.</p>
+        <div className="mt-2 flex justify-center gap-4">
+          <Link className="underline" href="/support">Support</Link>
+          <Link className="underline" href="/privacy">Privacy</Link>
+          <Link className="underline" href="/terms">Terms</Link>
+        </div>
       </footer>
     </div>
   );
