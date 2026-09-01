@@ -19,6 +19,7 @@ struct ContentView: View {
     @State private var isAutoCrossfading = false
     @State private var isShowingStore = false
     @State private var isShowingPrivacy = false
+    @State private var compactSection: CompactSection = .studio
 
     private let freeSongLimit = 4
 
@@ -298,12 +299,22 @@ struct ContentView: View {
     }
 
     private func compactWorkspace(width: CGFloat) -> some View {
-        ScrollView {
-            VStack(spacing: 14) {
+        VStack(spacing: 12) {
+            Picker("Mobile section", selection: $compactSection) {
+                ForEach(CompactSection.allCases) { section in
+                    Text(section.title).tag(section)
+                }
+            }
+            .pickerStyle(.segmented)
+
+            switch compactSection {
+            case .studio:
+                ScrollView {
+                    VStack(spacing: 14) {
                 DeckPanel(
                     state: player.deckA,
                     compact: true,
-                    loadHint: "Load A from library or playlist",
+                    loadHint: "Load A from Library or Set",
                     onPlay: { player.toggle(.a) },
                     onStop: { player.stop(.a) },
                     onSeek: { player.seek(deck: .a, to: $0) },
@@ -329,7 +340,7 @@ struct ContentView: View {
                 DeckPanel(
                     state: player.deckB,
                     compact: true,
-                    loadHint: "Load B from library or playlist",
+                    loadHint: "Load B from Library or Set",
                     onPlay: { player.toggle(.b) },
                     onStop: { player.stop(.b) },
                     onSeek: { player.seek(deck: .b, to: $0) },
@@ -341,17 +352,125 @@ struct ContentView: View {
                     }
                 )
                 .frame(width: width)
-
-                libraryPanel
+                    }
                     .frame(width: width)
-                    .frame(minHeight: 420)
-                playlistPanel
-                    .frame(width: width)
-                    .frame(minHeight: 360)
+                }
+            case .library:
+                mobileLibraryPanel.frame(width: width)
+            case .set:
+                mobilePlaylistPanel.frame(width: width)
             }
-            .frame(width: width)
         }
         .frame(width: width)
+        .frame(maxHeight: .infinity)
+    }
+
+    private var mobileLibraryPanel: some View {
+        VStack(spacing: 12) {
+            HStack(spacing: 10) {
+                Label("Library", systemImage: "music.note")
+                    .font(.title3.weight(.bold))
+                Spacer()
+                Button { isImportingFiles = true } label: {
+                    Label("Add", systemImage: "square.and.arrow.up")
+                }
+                .buttonStyle(DJButtonStyle(prominent: true))
+                Menu {
+                    Button("Choose Songs", systemImage: "music.note.list") {
+                        Task { await openMusicLibraryPicker() }
+                    }
+                    Button("Import Playable Library", systemImage: "square.and.arrow.down.on.square") {
+                        Task { await importPlayableMusicLibrary() }
+                    }
+                } label: {
+                    Image(systemName: "music.quarternote.3")
+                }
+                .buttonStyle(DJButtonStyle())
+            }
+
+            Picker("Library type", selection: $selectedLibraryTab) {
+                ForEach(LibraryTab.allCases) { tab in Text(tab.title).tag(tab) }
+            }
+            .pickerStyle(.segmented)
+
+            TextField("Search songs", text: $searchText)
+                .textFieldStyle(.plain)
+                .padding(.horizontal, 12)
+                .frame(height: 42)
+                .background(AppColors.field, in: RoundedRectangle(cornerRadius: 8))
+
+            if selectedLibraryTab == .commercials {
+                EmptyState(title: "Commercials Coming Next", message: "The mobile workspace currently focuses on music and playlist playback.")
+            } else if filteredTracks.isEmpty {
+                EmptyState(title: "No Songs Yet", message: "Tap Add to import audio stored on this device.")
+            } else {
+                ScrollView {
+                    LazyVStack(spacing: 1) {
+                        ForEach(filteredTracks) { track in
+                            MobileTrackRow(
+                                track: track,
+                                loadA: { load(track, into: .a) },
+                                loadB: { load(track, into: .b) },
+                                preview: { preview(track) },
+                                addToPlaylist: { library.add(track, to: library.activePlaylist) },
+                                delete: { library.delete(track) }
+                            )
+                        }
+                    }
+                }
+            }
+        }
+        .padding(14)
+        .frame(maxHeight: .infinity)
+        .background(AppColors.panel, in: RoundedRectangle(cornerRadius: 12))
+        .overlay(RoundedRectangle(cornerRadius: 12).stroke(AppColors.border))
+    }
+
+    private var mobilePlaylistPanel: some View {
+        VStack(spacing: 12) {
+            HStack(spacing: 10) {
+                Label("Set", systemImage: "music.note.list")
+                    .font(.title3.weight(.bold))
+                Spacer()
+                Button { isCreatingPlaylist = true } label: {
+                    Label("New", systemImage: "plus")
+                }
+                .buttonStyle(DJButtonStyle(prominent: true))
+            }
+
+            Picker("Playlist", selection: Binding(
+                get: { library.activePlaylist?.id ?? "" },
+                set: { library.selectPlaylist(id: $0) }
+            )) {
+                if library.playlists.isEmpty { Text("No Playlist").tag("") }
+                ForEach(library.playlists) { playlist in Text(playlist.name).tag(playlist.id) }
+            }
+            .pickerStyle(.menu)
+            .frame(maxWidth: .infinity, alignment: .leading)
+
+            if library.activePlaylist == nil {
+                EmptyState(title: "No Set Yet", message: "Create a set, then add songs from the Library tab.")
+            } else if library.activePlaylistTracks.isEmpty {
+                EmptyState(title: library.activePlaylist?.name ?? "Set", message: "Open Library and add songs to this set.")
+            } else {
+                ScrollView {
+                    LazyVStack(spacing: 1) {
+                        ForEach(library.activePlaylistTracks) { track in
+                            MobilePlaylistTrackRow(
+                                track: track,
+                                loadA: { load(track, into: .a) },
+                                loadB: { load(track, into: .b) },
+                                remove: { library.remove(track, from: library.activePlaylist) }
+                            )
+                        }
+                    }
+                }
+            }
+        }
+        .padding(14)
+        .frame(maxHeight: .infinity)
+        .background(AppColors.panel, in: RoundedRectangle(cornerRadius: 12))
+        .overlay(RoundedRectangle(cornerRadius: 12).stroke(AppColors.border))
     }
 
     private var libraryPanel: some View {
@@ -763,6 +882,23 @@ struct ContentView: View {
     }
 }
 
+private enum CompactSection: String, CaseIterable, Identifiable {
+    case studio
+    case library
+    case set
+
+    var id: String { rawValue }
+
+    var title: String {
+        switch self {
+        case .studio: return "Studio"
+        case .library: return "Library"
+        case .set: return "Set"
+        }
+    }
+
+}
+
 private enum LibraryTab: String, CaseIterable, Identifiable {
     case songs
     case commercials
@@ -946,6 +1082,46 @@ private struct TrackRow: View {
     }
 }
 
+private struct MobileTrackRow: View {
+    let track: DJTrack
+    let loadA: () -> Void
+    let loadB: () -> Void
+    let preview: () -> Void
+    let addToPlaylist: () -> Void
+    let delete: () -> Void
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 9) {
+            HStack(spacing: 10) {
+                Image(systemName: track.source == .musicLibrary ? "music.quarternote.3" : "waveform")
+                    .foregroundStyle(AppColors.accent)
+                    .frame(width: 24)
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(track.title).font(.body.weight(.semibold)).lineLimit(1)
+                    Text("\(track.artist) - \(track.displayDuration)")
+                        .font(.caption).foregroundStyle(.secondary).lineLimit(1)
+                }
+                Spacer()
+                Menu {
+                    Button("Preview", systemImage: "headphones", action: preview)
+                    Button("Add to Set", systemImage: "plus.circle", action: addToPlaylist)
+                    Button("Delete", systemImage: "trash", role: .destructive, action: delete)
+                } label: {
+                    Image(systemName: "ellipsis.circle").font(.title3)
+                }
+            }
+            HStack(spacing: 10) {
+                Button("Load Deck A", action: loadA)
+                    .buttonStyle(DJButtonStyle(prominent: true))
+                Button("Load Deck B", action: loadB)
+                    .buttonStyle(DJButtonStyle())
+            }
+        }
+        .padding(12)
+        .background(AppColors.row)
+    }
+}
+
 private struct PlaylistTrackRow: View {
     let track: DJTrack
     let loadA: () -> Void
@@ -975,6 +1151,38 @@ private struct PlaylistTrackRow: View {
         }
         .padding(.horizontal, 12)
         .padding(.vertical, 9)
+        .background(AppColors.row)
+    }
+}
+
+private struct MobilePlaylistTrackRow: View {
+    let track: DJTrack
+    let loadA: () -> Void
+    let loadB: () -> Void
+    let remove: () -> Void
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 9) {
+            HStack(spacing: 10) {
+                Image(systemName: "line.3.horizontal")
+                    .foregroundStyle(.secondary)
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(track.title).font(.body.weight(.semibold)).lineLimit(1)
+                    Text("\(track.source.rawValue.capitalized) - \(track.displayDuration)")
+                        .font(.caption).foregroundStyle(.secondary)
+                }
+                Spacer()
+                Button(action: remove) { Image(systemName: "xmark.circle") }
+                    .buttonStyle(.plain)
+            }
+            HStack(spacing: 10) {
+                Button("Load Deck A", action: loadA)
+                    .buttonStyle(DJButtonStyle(prominent: true))
+                Button("Load Deck B", action: loadB)
+                    .buttonStyle(DJButtonStyle())
+            }
+        }
+        .padding(12)
         .background(AppColors.row)
     }
 }
