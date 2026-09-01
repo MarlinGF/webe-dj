@@ -17,6 +17,12 @@ export default function SupportPage() {
       </section>
 
       <section className="space-y-2">
+        <h2 className="text-2xl font-semibold">Use We-be DJ on desktop</h2>
+        <p>The full-size studio is available from this website on a laptop or desktop browser. The desktop version uses a We-be account. Website and App Store lifetime purchases are currently separate.</p>
+        <Link className="underline" href="/">Open the desktop version</Link>
+      </section>
+
+      <section className="space-y-2">
         <h2 className="text-2xl font-semibold">Delete local DJ data</h2>
         <p>Open Privacy &amp; Data and choose Delete all local audio and playlists. This clears the native DJ library without deleting or affecting an account used in another We-be app.</p>
       </section>

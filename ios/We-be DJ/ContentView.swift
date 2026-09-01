@@ -232,6 +232,13 @@ struct ContentView: View {
                 Section("Purchases") {
                     Button("Restore Purchases") { Task { await purchases.restore() } }
                 }
+                Section("Desktop version") {
+                    Text("Prefer a larger workspace? We-be DJ is also available in a desktop web browser.")
+                    Link("Open We-be DJ for Desktop", destination: URL(string: "https://studio--we-be-live-xek44.us-central1.hosted.app/")!)
+                    Text("The desktop version uses a We-be account. Website and App Store lifetime purchases are currently separate.")
+                        .font(.footnote)
+                        .foregroundStyle(.secondary)
+                }
                 Section("Delete native DJ data") {
                     Button("Delete all local audio and playlists", role: .destructive) {
                         player.stop(.a)
